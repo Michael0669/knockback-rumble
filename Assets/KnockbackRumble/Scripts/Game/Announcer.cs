@@ -1,16 +1,20 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KnockbackRumble
 {
     /// <summary>
-    /// Rusty Nutz (and occasionally Trina Tailpipe) heckling the race as subtitles.
-    /// Text only for now; these become the recording script for voice lines later.
-    /// Lines starting with "T:" are Trina's.
+    /// Rusty Nutz and Trina Tailpipe heckling the race out loud. Each line plays its
+    /// audio clip (Resources/VO/{id}) and shows a subtitle. Lines are name-free so
+    /// they work for anyone. This file doubles as the recording script.
     /// </summary>
     public static class Announcer
     {
         public const string Rusty = "RUSTY NUTZ";
         public const string Trina = "TRINA TAILPIPE";
+
+        static readonly VoiceStyle RustyVoice = new VoiceStyle(false, 0, "low");
+        static readonly VoiceStyle TrinaVoice = new VoiceStyle(true, 1, "medium");
 
         public static string Speaker { get; private set; }
         public static string Line { get; private set; }
@@ -18,20 +22,14 @@ namespace KnockbackRumble
         public static string Toast { get; private set; }
         public static float ToastTime { get; private set; } = -99f;
 
+        static AudioSource source;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
             Speaker = null; Line = null; LineTime = -99f;
             Toast = null; ToastTime = -99f;
-        }
-
-        public static void Say(string line, bool force = false)
-        {
-            if (string.IsNullOrEmpty(line)) return;
-            if (!force && Time.time - LineTime < 1.6f) return; // let the last joke land
-            if (line.StartsWith("T:")) { Speaker = Trina; Line = line.Substring(2).Trim(); }
-            else { Speaker = Rusty; Line = line; }
-            LineTime = Time.time;
+            source = null;
         }
 
         public static void ShowToast(string text)
@@ -40,127 +38,165 @@ namespace KnockbackRumble
             ToastTime = Time.time;
         }
 
-        static string Pick(string[] lines) => lines[Random.Range(0, lines.Length)];
-
-        static string Fill(string line, string victim, string attacker = null) =>
-            line.Replace("{victim}", victim).Replace("{attacker}", attacker ?? "somebody");
-
-        // ---------- Event hooks ----------
-
-        public static void Intro() => Say(Pick(IntroLines), true);
-        public static void Countdown() => Say(Pick(CountdownLines), true);
-        public static void Go() => Say(Pick(GoLines), true);
-
-        public static void BigLaunch(string victim, string attacker, string weapon)
+        /// <summary>Speak a random line from the set. Unforced lines never talk over the current one.</summary>
+        public static void Say(VoiceLine[] set, bool force = false)
         {
-            if (attacker == null && weapon != null && HazardLines.Length > 0)
+            var line = VoiceLine.Pick(set);
+            if (line == null) return;
+
+            bool busy = (source != null && source.isPlaying) || Time.time - LineTime < 1.6f;
+            if (busy && !force) return;
+
+            Speaker = line.speaker;
+            Line = line.text;
+            LineTime = Time.time;
+
+            var clip = line.Clip;
+            if (clip == null) return;
+            if (source == null)
             {
-                Say(Fill(Pick(HazardLines), victim).Replace("{hazard}", weapon.ToLowerInvariant()));
-                return;
+                var go = new GameObject("AnnouncerVoice");
+                source = go.AddComponent<AudioSource>();
+                source.playOnAwake = false;
+                source.spatialBlend = 0f; // in your ears, not in the world
+                source.priority = 0;
             }
-            Say(Fill(Pick(LaunchLines), victim, attacker));
+            source.Stop();
+            source.clip = clip;
+            source.Play();
         }
 
-        public static void Fell(string victim, string attacker, bool selfOwn)
+        // ---------- Event hooks (called by RaceManager) ----------
+
+        public static void Intro() => Say(IntroLines, true);
+        public static void Countdown() => Say(CountdownLines, true);
+        public static void Go() => Say(GoLines, true);
+
+        public static void BigLaunch(bool playerHit, bool playerAttacked, bool hazard)
         {
-            if (selfOwn) Say(Fill(Pick(SelfOwnLines), victim), true);
-            else if (attacker != null) Say(Fill(Pick(KnockoffLines), victim, attacker), true);
-            else Say(Fill(Pick(SoloFallLines), victim));
+            if (playerHit && hazard) Say(HazardHitLines);
+            else if (playerHit) Say(PlayerLaunchedLines);
+            else if (playerAttacked) Say(PlayerLaunchedSomeoneLines);
+            else Say(BotLaunchedLines);
         }
 
-        public static void Qualified(string name, bool isPlayer) =>
-            Say(Fill(Pick(isPlayer ? PlayerQualifiedLines : QualifiedLines), name), isPlayer);
+        public static void Fell(bool isPlayer, bool byPlayer, bool bySomeone, bool selfOwn)
+        {
+            if (isPlayer && selfOwn) Say(SelfOwnLines, true);
+            else if (isPlayer && bySomeone) Say(PlayerKnockedOffLines, true);
+            else if (isPlayer) Say(PlayerSoloFallLines, true);
+            else if (byPlayer) Say(PlayerKnockedSomeoneOffLines, true);
+            else Say(BotFellLines);
+        }
 
-        public static void RaceOver(bool playerQualified, string playerName) =>
-            Say(Fill(Pick(playerQualified ? EndWinLines : EndLoseLines), playerName), true);
+        public static void Qualified(bool isPlayer) => Say(isPlayer ? PlayerQualifiedLines : BotQualifiedLines, isPlayer);
+        public static void RaceOver(bool playerQualified) => Say(playerQualified ? EndWinLines : EndLoseLines, true);
 
         // ---------- Script ----------
 
-        static readonly string[] IntroLines =
+        static VoiceLine[] R(string key, params string[] t) => VoiceLine.Set("rusty_" + key, Rusty, RustyVoice, t);
+        static VoiceLine[] T(string key, params string[] t) => VoiceLine.Set("trina_" + key, Trina, TrinaVoice, t);
+        static VoiceLine[] Mix(params VoiceLine[][] sets)
         {
-            "Welcome back to Knockback Rumble, the only show the FCC begged us to cancel!",
-            "I'm Rusty Nutz, I'm legally drunk, and this is Scrap Sprint!",
-            "T:Rusty's been sober for... nope, I can smell him from the booth.",
-            "Tonight's contestants signed a waiver none of 'em read. God bless America.",
-        };
+            var all = new List<VoiceLine>();
+            foreach (var s in sets) all.AddRange(s);
+            return all.ToArray();
+        }
 
-        static readonly string[] CountdownLines =
-        {
+        static readonly VoiceLine[] IntroLines = Mix(
+            R("intro",
+                "Welcome back to Knockback Rumble, the only show the F C C begged us to cancel!",
+                "I'm Rusty Nutz, I'm legally drunk, and this is Scrap Sprint!",
+                "Tonight's contestants signed a waiver none of 'em read. God bless America."),
+            T("intro", "Rusty's been sober for... nope, I can smell him from the booth."));
+
+        static readonly VoiceLine[] CountdownLines = R("countdown",
             "Three... two... one... somebody's gonna cry!",
-            "On your marks, get set, sign your organ donor cards!",
-        };
+            "On your marks, get set, sign your organ donor cards!");
 
-        static readonly string[] GoLines =
-        {
-            "GO! Run, you plastic bastards!",
-            "GO GO GO! Insurance doesn't cover any of this!",
-            "T:And they're off! Like Rusty's marriage!",
-        };
+        static readonly VoiceLine[] GoLines = Mix(
+            R("go", "Go! Run, you plastic bastards!", "Go go go! Insurance doesn't cover any of this!"),
+            T("go", "And they're off! Just like Rusty's marriage!"));
 
-        static readonly string[] LaunchLines =
-        {
-            "Holy shit, {victim} is in orbit!",
-            "{attacker} just sent {victim} to the shadow realm!",
-            "Look at {victim} fly! Farthest anything's flown since my third wife left.",
-            "{victim} just got launched harder than a crypto scam!",
-            "That's gonna leave a dent. Several dents. A whole dent family.",
-            "T:{attacker} just rearranged {victim}'s whole skeleton. Do dummies have skeletons?",
-            "Somebody call {victim}'s mama. Actually don't, she's watching.",
-        };
+        static readonly VoiceLine[] PlayerLaunchedLines = Mix(
+            R("player_launched",
+                "Holy shit, you're in orbit!",
+                "Look at you fly! Farthest anything's flown since my third wife left.",
+                "That's gonna leave a dent. Several dents. A whole dent family."),
+            T("player_launched", "Somebody call your mama. Actually don't, she's watching."));
 
-        static readonly string[] HazardLines =
-        {
-            "That {hazard} has more hits than my ex-wife's lawyer!",
-            "{victim} just got personally victimized by the {hazard}!",
-            "T:Dr. Lee Ability swears that {hazard} passed inspection.",
-            "The {hazard} sends its regards, {victim}!",
-        };
+        static readonly VoiceLine[] PlayerLaunchedSomeoneLines = Mix(
+            R("player_launches",
+                "Oh, you dirty bastard! Send 'em to the shadow realm!",
+                "You just launched that poor dummy harder than a crypto scam!"),
+            T("player_launches", "Did you just rearrange their whole skeleton? Do dummies even have skeletons?"));
 
-        static readonly string[] KnockoffLines =
-        {
-            "{attacker} yeeted {victim} off the course! Beautiful. Disgusting. Beautiful.",
-            "{victim} is swimming with the scrap now, courtesy of {attacker}!",
-            "{attacker} just evicted {victim}. No thirty-day notice!",
-            "T:{victim} got bodied by {attacker}! Somebody pour one out!",
-        };
+        static readonly VoiceLine[] HazardHitLines = Mix(
+            R("hazard",
+                "That thing's got more hits than my ex-wife's lawyer!",
+                "You just got personally victimized by the scenery!"),
+            T("hazard", "Doctor Lee Ability swears that passed inspection."));
 
-        static readonly string[] SoloFallLines =
-        {
-            "{victim} fell off all by themselves. Nobody touched you, dumbass!",
-            "Gravity: one. {victim}: zero.",
-            "And {victim} eats shit with zero help from anybody!",
-            "T:{victim} just walked off the edge like it owed 'em money.",
-        };
+        static readonly VoiceLine[] BotLaunchedLines = R("bot_launched",
+            "Holy shit, that dummy is in orbit!",
+            "Somebody's getting launched into next week!");
 
-        static readonly string[] SelfOwnLines =
-        {
-            "{victim} rocket-jumped straight into the void! Ten outta ten, would watch again.",
-            "{victim} blew themselves up! That's the most honest thing I've seen all night.",
-        };
+        static readonly VoiceLine[] PlayerKnockedSomeoneOffLines = Mix(
+            R("player_knockoff",
+                "You yeeted 'em off the course! Beautiful. Disgusting. Beautiful.",
+                "And they're swimming with the scrap now! Courtesy of you!"),
+            T("player_knockoff", "You just evicted that dummy. No thirty day notice!"));
 
-        static readonly string[] QualifiedLines =
-        {
-            "{victim} crosses the line! Qualified, and only slightly dented!",
-            "{victim} is through! Somebody hose 'em off!",
-        };
+        static readonly VoiceLine[] PlayerKnockedOffLines = Mix(
+            R("player_knocked_off",
+                "Somebody just bodied you! Pour one out!",
+                "You got evicted! Get your plastic ass back up there!"),
+            T("player_knocked_off", "Ooh, that's gotta hurt your feelings. And your everything else."));
 
-        static readonly string[] PlayerQualifiedLines =
-        {
+        static readonly VoiceLine[] PlayerSoloFallLines = Mix(
+            R("player_fell",
+                "You fell off all by yourself. Nobody touched you, dumbass!",
+                "Gravity: one. You: zero."),
+            T("player_fell", "You just walked off the edge like it owed you money."));
+
+        static readonly VoiceLine[] BotFellLines = Mix(
+            R("bot_fell", "Another dummy eats shit!", "Splat! Somebody hose that off."),
+            T("bot_fell", "And one more for the scrap pile!"));
+
+        static readonly VoiceLine[] SelfOwnLines = R("self_own",
+            "You rocket jumped straight into the void! Ten out of ten, would watch again.",
+            "You blew yourself up! Most honest thing I've seen all night.");
+
+        static readonly VoiceLine[] PlayerQualifiedLines = R("player_qualified",
             "You made it, you beautiful dented son of a gun!",
-            "Look at you! Qualified! Your parents might finally return your calls!",
-        };
+            "Look at you! Qualified! Your parents might finally return your calls!");
 
-        static readonly string[] EndWinLines =
-        {
-            "That's the race! Losers, report to the crusher.",
-            "Race over! {victim} lives to get dented another day!",
-        };
+        static readonly VoiceLine[] BotQualifiedLines = R("bot_qualified",
+            "Another one crosses the line! Somebody hose 'em off!",
+            "Qualified, and only slightly dented!");
 
-        static readonly string[] EndLoseLines =
+        static readonly VoiceLine[] EndWinLines = Mix(
+            R("end_win", "That's the race! Losers, report to the crusher."),
+            T("end_win", "Race over! Somebody get Rusty a bucket."));
+
+        static readonly VoiceLine[] EndLoseLines = Mix(
+            R("end_lose",
+                "Eliminated! Go home, your family's embarrassed.",
+                "That's it for you. Don't let the scrap door hit your ass on the way out."),
+            T("end_lose", "Aww, you got eliminated. Anyway!"));
+
+        /// <summary>Every announcer line, for voice generation and the recording script.</summary>
+        public static IEnumerable<VoiceLine> AllLines()
         {
-            "Eliminated! Go home, {victim}, your family's embarrassed.",
-            "That's it for {victim}. Don't let the scrap door hit your ass on the way out.",
-            "T:Aww, {victim} got eliminated. Anyway!",
-        };
+            var sets = new[]
+            {
+                IntroLines, CountdownLines, GoLines, PlayerLaunchedLines, PlayerLaunchedSomeoneLines, HazardHitLines,
+                BotLaunchedLines, PlayerKnockedSomeoneOffLines, PlayerKnockedOffLines, PlayerSoloFallLines, BotFellLines,
+                SelfOwnLines, PlayerQualifiedLines, BotQualifiedLines, EndWinLines, EndLoseLines,
+            };
+            foreach (var set in sets)
+                foreach (var line in set)
+                    yield return line;
+        }
     }
 }

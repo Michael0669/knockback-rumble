@@ -132,9 +132,9 @@ namespace KnockbackRumble
             // Only narrate falls involving the player (or the occasional bot) so Rusty doesn't spam.
             bool playerInvolved = c.IsPlayer || (attacker != null && attacker.IsPlayer);
             if (State == Phase.Racing && (playerInvolved || Random.value < 0.25f))
-                Announcer.Fell(c.DisplayName, attacker != null ? attacker.DisplayName : null, selfOwn);
+                Announcer.Fell(c.IsPlayer, attacker != null && attacker.IsPlayer, attacker != null, selfOwn);
 
-            if (!c.IsPlayer && c.Persona != null) c.Bark(c.Persona.Pick(c.Persona.Fell));
+            if (!c.IsPlayer && c.Persona != null) c.Bark(VoiceLine.Pick(c.Persona.Fell));
 
             Vector3 p = c.RespawnPoint + new Vector3(Random.Range(-2f, 2f), 0.5f, Random.Range(-1f, 1f));
             c.Motor.Teleport(p, Quaternion.identity);
@@ -150,11 +150,11 @@ namespace KnockbackRumble
             var attacker = attackerGo != null ? attackerGo.GetComponent<Contestant>() : null;
 
             if (!victim.IsPlayer && victim.Persona != null && knock > 12f && Random.value < 0.7f)
-                victim.Bark(victim.Persona.Pick(victim.Persona.Launched));
+                victim.Bark(VoiceLine.Pick(victim.Persona.Launched));
 
             bool playerInvolved = victim.IsPlayer || (attacker != null && attacker.IsPlayer);
             if (State == Phase.Racing && knock > 16f && (playerInvolved || Random.value < 0.15f))
-                Announcer.BigLaunch(victim.DisplayName, attacker != null ? attacker.DisplayName : null, attacker == null ? weapon : null);
+                Announcer.BigLaunch(victim.IsPlayer, attacker != null && attacker.IsPlayer, attacker == null);
         }
 
         public void ReachCheckpoint(Contestant c, Checkpoint cp)
@@ -173,9 +173,9 @@ namespace KnockbackRumble
             c.FinishPlace = Finishers.Count;
             c.FinishTime = Clock;
             bool qualified = c.FinishPlace <= QualifySlots;
-            if (qualified && (c.IsPlayer || Random.value < 0.4f)) Announcer.Qualified(c.DisplayName, c.IsPlayer);
+            if (qualified && (c.IsPlayer || Random.value < 0.4f)) Announcer.Qualified(c.IsPlayer);
             if (c.IsPlayer) Announcer.ShowToast(qualified ? "QUALIFIED! #" + c.FinishPlace : "Too slow!");
-            if (!c.IsPlayer && c.Persona != null) c.Bark(c.Persona.Pick(c.Persona.Finished));
+            if (!c.IsPlayer && c.Persona != null) c.Bark(VoiceLine.Pick(c.Persona.Finished));
         }
 
         void EndRace()
@@ -187,7 +187,7 @@ namespace KnockbackRumble
             rest.Sort((a, b) => b.transform.position.z.CompareTo(a.transform.position.z));
             Results.AddRange(rest);
             foreach (var c in rest) c.Motor.InputLocked = true; // eliminated dummies freeze where they stand
-            Announcer.RaceOver(IsQualified(Player), Player != null ? Player.DisplayName : "you");
+            Announcer.RaceOver(IsQualified(Player));
         }
 
         public bool IsQualified(Contestant c) => c != null && c.Finished && c.FinishPlace <= QualifySlots;

@@ -32,8 +32,8 @@ namespace KnockbackRumble
 
         public static readonly WeaponDef PopPistol = new WeaponDef
         {
-            id = "pistol", name = "Pop Pistol", kind = WeaponKind.Hitscan, ammo = 12,
-            cooldown = 0.2f, knockback = 4.5f, dent = 5f, minLift = 0.2f,
+            id = "pistol", name = "Pop Pistol", kind = WeaponKind.Hitscan, ammo = 8,
+            cooldown = 0.3f, knockback = 4.5f, dent = 5f, minLift = 0.2f,
             range = 60f, color = new Color(0.25f, 0.85f, 0.95f),
         };
 

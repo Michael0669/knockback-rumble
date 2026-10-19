@@ -59,12 +59,31 @@ namespace KnockbackRumble
             return c;
         }
 
-        public void Bark(string line)
+        AudioSource voice;
+
+        /// <summary>Yell a voice-pack line out loud (3D audio, so you hear it near them).</summary>
+        public void Bark(VoiceLine line)
         {
-            if (string.IsNullOrEmpty(line)) return;
-            if (Time.time - BarkTime < 1.5f) return; // don't talk over yourself
-            BarkText = line;
+            if (line == null) return;
+            if (Time.time - BarkTime < 1.5f) return;          // don't talk over yourself
+            if (voice != null && voice.isPlaying) return;
+            BarkText = line.text;
             BarkTime = Time.time;
+
+            var clip = line.Clip;
+            if (clip == null) return;
+            if (voice == null)
+            {
+                voice = gameObject.AddComponent<AudioSource>();
+                voice.playOnAwake = false;
+                voice.spatialBlend = 1f;
+                voice.rolloffMode = AudioRolloffMode.Linear;
+                voice.minDistance = 4f;
+                voice.maxDistance = 40f;
+                voice.dopplerLevel = 0f;
+            }
+            voice.clip = clip;
+            voice.Play();
         }
 
         public void ResetForRace(Vector3 spawn)

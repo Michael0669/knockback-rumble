@@ -9,7 +9,11 @@ It's one Race round (Scrap Sprint) against 7 bots, no networking yet. Everything
 2. Open the project in Unity and wait for scripts to compile. The Console should show no red errors.
 3. In the top menu bar: **Knockback Rumble → Build Scrap Sprint Scene**.
    This builds the course, saves it to `Assets/KnockbackRumble/Scenes/ScrapSprint.unity`, and opens it.
-4. Press **Play**.
+4. **Voices (one time):** **Knockback Rumble → Voices → Generate Placeholder Voices**. This uses your computer's
+   built-in text-to-speech to record every announcer and contestant line (takes about a minute). They're robot
+   placeholders until real voices are recorded. To swap one in, save a .wav with the same file name into
+   `Assets/KnockbackRumble/Resources/VO`. **Voices → Export Voice Script (CSV)** gives you the full list.
+5. Press **Play**.
 
 After you change anything in `ScrapSprintBuilder.cs`, run the menu item again to rebuild the course.
 
@@ -36,8 +40,9 @@ The purple "Express Lane" wall at the crusher hall is only reachable this way (o
   Your own explosions launch you but add only half the Dent and never stun you.
 - **Course:** start pad → backwards conveyor with bumpers → wrecking-ball bridge → jump gaps →
   crusher hall (with rocket-jump shortcut) → spin bar → ramp → finish. 3 checkpoints.
-- **Race:** first 5 of 8 across the line qualify. Rusty Nutz and Trina Tailpipe heckle in subtitles;
-  bots yell their voice-pack lines when launched.
+- **Race:** first 5 of 8 across the line qualify. Rusty Nutz and Trina Tailpipe heckle out loud (with a subtitle);
+  bots yell their voice-pack lines when launched, and you hear them louder the closer they are.
+- **Weapon crates:** only 4 on the course (start, CP1, CP2, and a rocket by the shortcut), respawning every 20 s.
 
 ## What I need from you after playing
 

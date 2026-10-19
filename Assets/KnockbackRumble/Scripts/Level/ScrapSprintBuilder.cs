@@ -87,8 +87,7 @@ namespace KnockbackRumble
                     spawns.Add(new Vector3(x, 0.05f, z));
             info.spawnPoints = spawns.ToArray();
 
-            Pickup(g, "pistol", new Vector3(-4f, 0f, 7f));
-            Pickup(g, "pistol", new Vector3(4f, 0f, 7f));
+            // Weapon crates are deliberately scarce (4 on the whole course) so races aren't nonstop launches.
             Pickup(g, "random", new Vector3(0f, 0f, 8f));
 
             Sign(g, "SCRAP SPRINT", new Vector3(0f, 7f, 12f), 0.5f, Palette.Gold);
@@ -120,8 +119,7 @@ namespace KnockbackRumble
             // CP1
             Floor(g, "CP1_Pad", 0f, 40f, 46f, 12f, 0f, floorDark);
             CheckpointGate(g, 0, new Vector3(0f, 0f, 43f), 12f);
-            Pickup(g, "rocket", new Vector3(-3f, 0f, 44.5f));
-            Pickup(g, "random", new Vector3(3f, 0f, 44.5f));
+            Pickup(g, "random", new Vector3(0f, 0f, 44.5f));
         }
 
         static void BuildWreckingBridge(Transform g)
@@ -157,8 +155,7 @@ namespace KnockbackRumble
         {
             Floor(g, "CP2_Pad", 0f, 78f, 84f, 10f, 0f, floorDark);
             CheckpointGate(g, 1, new Vector3(0f, 0f, 81f), 10f);
-            Pickup(g, "rocket", new Vector3(-2.5f, 0f, 82.5f));
-            Pickup(g, "pistol", new Vector3(2.5f, 0f, 82.5f));
+            Pickup(g, "pistol", new Vector3(0f, 0f, 82.5f));
 
             // 5x5 platforms with 2.5m gaps and small height changes
             Vector3[] plats = { new Vector3(-1.5f, 0.5f, 89f), new Vector3(1.5f, 1f, 96.5f), new Vector3(-1f, 0.5f, 104f), new Vector3(1f, 0f, 111.5f) };
@@ -174,7 +171,6 @@ namespace KnockbackRumble
             Floor(g, "CP3_Pad", 0f, 116.5f, 122f, 14f, 0f, floorDark);
             CheckpointGate(g, 2, new Vector3(0f, 0f, 119.5f), 14f);
             Pickup(g, "rocket", new Vector3(-5f, 0f, 120.5f)); // right next to the shortcut wall
-            Pickup(g, "random", new Vector3(3f, 0f, 120.5f));
 
             Floor(g, "HallFloor", 0f, 122f, 148f, 14f, 0f, floor);
 

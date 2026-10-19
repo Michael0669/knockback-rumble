@@ -24,7 +24,7 @@ namespace KnockbackRumble
             course = courseInfo;
             skill = Mathf.Clamp01(skillLevel);
             lateral = Random.Range(-1.5f, 1.5f);
-            fireTimer = Random.Range(0.5f, 1.5f);
+            fireTimer = Random.Range(1f, 2.5f);
             ResetPath();
         }
 
@@ -123,7 +123,7 @@ namespace KnockbackRumble
 
             if (retargetTimer <= 0f)
             {
-                target = FindTarget(holder.Held != null && holder.Held.kind == WeaponKind.Rocket ? 30f : 22f);
+                target = FindTarget(holder.Held != null && holder.Held.kind == WeaponKind.Rocket ? 22f : 16f);
                 retargetTimer = 0.4f;
             }
 
@@ -140,7 +140,7 @@ namespace KnockbackRumble
                 float spread = Mathf.Lerp(0.18f, 0.04f, skill);
                 Vector3 aim = (aimAt - holder.FirePoint).normalized + Random.insideUnitSphere * spread;
                 holder.TryFire(aim);
-                fireTimer = holder.Held != null ? holder.Held.cooldown + Random.Range(0.25f, 1.2f) * (1.5f - skill) : 0.5f;
+                fireTimer = holder.Held != null ? holder.Held.cooldown + Random.Range(0.9f, 2.2f) * (1.5f - skill) : 0.5f;
             }
 
             if (shoveTimer <= 0f)

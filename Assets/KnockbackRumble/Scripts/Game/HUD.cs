@@ -37,7 +37,6 @@ namespace KnockbackRumble
             float W = Screen.width / scale;
             float H = RefHeight;
 
-            DrawBarkFeed(race, H);
             DrawTopBar(race, W);
             DrawAnnouncer(W);
             DrawPlayerPanel(race, W, H);
@@ -138,29 +137,6 @@ namespace KnockbackRumble
                 y += 38f;
             }
             Label(new Rect(r.x, y + 4f, r.width, 34f), "Press R (or Start) to run it back", center, Palette.Gold);
-        }
-
-        /// <summary>
-        /// Bot one-liners as a small feed on the left edge, out of the way of the race
-        /// (replaces the overhead name tags and speech bubbles).
-        /// </summary>
-        void DrawBarkFeed(RaceManager race, float H)
-        {
-            var recent = race.Contestants.FindAll(c => c != null && !c.IsPlayer && c.BarkText != null && Time.time - c.BarkTime < 3.5f);
-            if (recent.Count == 0) return;
-            recent.Sort((a, b) => b.BarkTime.CompareTo(a.BarkTime));
-            var style = new GUIStyle(small) { fontSize = 18, wordWrap = true };
-            float y = H * 0.42f;
-            for (int i = 0; i < recent.Count && i < 3; i++)
-            {
-                var c = recent[i];
-                float alpha = Mathf.Clamp01((3.5f - (Time.time - c.BarkTime)) / 0.5f);
-                var col = c.Color;
-                col.a = alpha;
-                Label(new Rect(24f, y, 440f, 24f), c.DisplayName.ToUpperInvariant(), style, col);
-                Label(new Rect(24f, y + 22f, 440f, 48f), "\"" + c.BarkText + "\"", style, new Color(1f, 1f, 1f, alpha));
-                y += 74f;
-            }
         }
 
         void DrawHelp()

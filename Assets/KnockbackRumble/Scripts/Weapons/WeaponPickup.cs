@@ -13,7 +13,7 @@ namespace KnockbackRumble
 
         [Tooltip("pistol, rocket or random")]
         public string weaponId = "random";
-        public float respawnTime = 8f;
+        public float respawnTime = 20f;
 
         public bool Available { get; private set; } = true;
 
