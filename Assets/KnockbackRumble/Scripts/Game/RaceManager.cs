@@ -149,7 +149,7 @@ namespace KnockbackRumble
             if (victim == null || attackerGo == body.gameObject) return; // ignore rocket jumps
             var attacker = attackerGo != null ? attackerGo.GetComponent<Contestant>() : null;
 
-            if (!victim.IsPlayer && victim.Persona != null && knock > 12f && Random.value < 0.7f)
+            if (!victim.IsPlayer && victim.Persona != null && knock > 12f && Random.value < 0.5f)
                 victim.Bark(VoiceLine.Pick(victim.Persona.Launched));
 
             bool playerInvolved = victim.IsPlayer || (attacker != null && attacker.IsPlayer);

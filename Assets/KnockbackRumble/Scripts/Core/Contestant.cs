@@ -60,13 +60,15 @@ namespace KnockbackRumble
         }
 
         AudioSource voice;
+        float lastSpoke = -99f;
 
         /// <summary>Yell a voice-pack line out loud (3D audio, so you hear it near them).</summary>
         public void Bark(VoiceLine line)
         {
             if (line == null) return;
-            if (Time.time - BarkTime < 1.5f) return;          // don't talk over yourself
-            if (voice != null && voice.isPlaying) return;
+            if (Time.time - lastSpoke < 12f) return;           // each bot only pipes up now and then
+            if (!VoiceDirector.MayBark(transform.position)) return;
+            lastSpoke = Time.time;
             BarkText = line.text;
             BarkTime = Time.time;
 
@@ -82,8 +84,7 @@ namespace KnockbackRumble
                 voice.maxDistance = 40f;
                 voice.dopplerLevel = 0f;
             }
-            voice.clip = clip;
-            voice.Play();
+            VoiceDirector.Play(voice, clip, false);
         }
 
         public void ResetForRace(Vector3 spawn)
@@ -96,6 +97,7 @@ namespace KnockbackRumble
             Falls = 0;
             Knockoffs = 0;
             BarkTime = -99f;
+            lastSpoke = -99f;
             Motor.Teleport(spawn, Quaternion.identity);
             Dent.ResetDent();
             Weapons.Clear();

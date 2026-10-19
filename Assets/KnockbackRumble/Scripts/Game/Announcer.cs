@@ -42,18 +42,14 @@ namespace KnockbackRumble
         public static void Say(VoiceLine[] set, bool force = false)
         {
             var line = VoiceLine.Pick(set);
-            if (line == null) return;
-
-            bool busy = (source != null && source.isPlaying) || Time.time - LineTime < 1.6f;
-            if (busy && !force) return;
+            if (line == null || !VoiceDirector.MayAnnounce(force)) return;
 
             Speaker = line.speaker;
             Line = line.text;
             LineTime = Time.time;
 
             var clip = line.Clip;
-            if (clip == null) return;
-            if (source == null)
+            if (clip != null && source == null)
             {
                 var go = new GameObject("AnnouncerVoice");
                 source = go.AddComponent<AudioSource>();
@@ -61,15 +57,13 @@ namespace KnockbackRumble
                 source.spatialBlend = 0f; // in your ears, not in the world
                 source.priority = 0;
             }
-            source.Stop();
-            source.clip = clip;
-            source.Play();
+            VoiceDirector.Play(source, clip, true);
         }
 
         // ---------- Event hooks (called by RaceManager) ----------
 
         public static void Intro() => Say(IntroLines, true);
-        public static void Countdown() => Say(CountdownLines, true);
+        public static void Countdown() => Say(CountdownLines);
         public static void Go() => Say(GoLines, true);
 
         public static void BigLaunch(bool playerHit, bool playerAttacked, bool hazard)
@@ -85,7 +79,7 @@ namespace KnockbackRumble
             if (isPlayer && selfOwn) Say(SelfOwnLines, true);
             else if (isPlayer && bySomeone) Say(PlayerKnockedOffLines, true);
             else if (isPlayer) Say(PlayerSoloFallLines, true);
-            else if (byPlayer) Say(PlayerKnockedSomeoneOffLines, true);
+            else if (byPlayer) Say(PlayerKnockedSomeoneOffLines);
             else Say(BotFellLines);
         }
 
