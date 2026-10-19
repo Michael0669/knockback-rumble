@@ -13,8 +13,7 @@ namespace KnockbackRumble
         GUIStyle big, mid, small, center;
         Texture2D white;
         float helpUntil;
-
-        void Start() => helpUntil = Time.time + 12f;
+        bool shownHelp;
 
         void EnsureStyles()
         {
@@ -29,7 +28,8 @@ namespace KnockbackRumble
         void OnGUI()
         {
             var race = RaceManager.Instance;
-            if (race == null) return;
+            if (race == null || race.State == RaceManager.Phase.Idle) return;
+            if (!shownHelp) { shownHelp = true; helpUntil = Time.time + 12f; } // controls reminder for the first race
             EnsureStyles();
 
             float scale = Screen.height / RefHeight;
@@ -41,7 +41,7 @@ namespace KnockbackRumble
             DrawAnnouncer(W);
             DrawPlayerPanel(race, W, H);
             DrawToast(W, H);
-            if (Cursor.lockState == CursorLockMode.Locked && race.State != RaceManager.Phase.Results) DrawCrosshair(W, H);
+            if (!MenuUI.Paused && race.Player != null && race.State != RaceManager.Phase.Results) DrawCrosshair(W, H);
             if (race.State == RaceManager.Phase.Countdown) DrawCountdown(race, W, H);
             if (race.State == RaceManager.Phase.Results) DrawResults(race, W, H);
             DrawHelp();
@@ -136,7 +136,10 @@ namespace KnockbackRumble
                 Label(new Rect(r.x + 20f, y, r.width - 40f, 34f), line, center, col);
                 y += 38f;
             }
-            Label(new Rect(r.x, y + 4f, r.width, 34f), "Press R (or Start) to run it back", center, Palette.Gold);
+            string next = !Net.Online ? "Press R (or Start) to run it back  -  Esc for the menu"
+                        : Net.IsHost ? "Press R (or Start) for the next race  -  L to go back to the lobby"
+                        : "Waiting for the host to start the next race...";
+            Label(new Rect(r.x, y + 4f, r.width, 34f), next, center, Palette.Gold);
         }
 
         void DrawHelp()
@@ -144,7 +147,7 @@ namespace KnockbackRumble
             if (Time.time > helpUntil) return;
             const string help =
                 "WASD move   SPACE jump (mash to recover)   CTRL/C dive\n" +
-                "LMB fire   E / F / RMB shove   ESC free mouse\n" +
+                "LMB fire   E / F / RMB shove   ESC menu\n" +
                 "Fire a rocket at your feet + jump = rocket jump";
             Box(new Rect(20f, 20f, 560f, 84f), new Color(0f, 0f, 0f, 0.5f));
             var s = new GUIStyle(small) { fontSize = 18 };

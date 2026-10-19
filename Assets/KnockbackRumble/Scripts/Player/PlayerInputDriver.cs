@@ -7,7 +7,7 @@ namespace KnockbackRumble
     /// Reads keyboard/mouse and gamepad and drives the local player's dummy.
     ///   Move: WASD / left stick      Jump: Space / A       Dive: Left Ctrl or C / B
     ///   Fire: Left mouse / RT        Shove: E, F or right mouse / X or RB
-    ///   Esc frees the mouse; click to grab it again.
+    ///   Esc (or Back/Select) opens the pause menu.
     /// </summary>
     public class PlayerInputDriver : MonoBehaviour
     {
@@ -22,13 +22,7 @@ namespace KnockbackRumble
             unityCam = camera.GetComponent<Camera>();
         }
 
-        void Start() => SetCursorLocked(true);
-
-        static void SetCursorLocked(bool locked)
-        {
-            Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
-            Cursor.visible = !locked;
-        }
+        void Start() => MenuUI.SetPaused(false);
 
         void Update()
         {
@@ -37,13 +31,17 @@ namespace KnockbackRumble
             var mouse = Mouse.current;
             var pad = Gamepad.current;
 
-            if (kb != null && kb.escapeKey.wasPressedThisFrame) SetCursorLocked(false);
-            bool locked = Cursor.lockState == CursorLockMode.Locked;
-            if (!locked && mouse != null && mouse.leftButton.wasPressedThisFrame)
+            // Esc (or Back on a gamepad) opens the pause menu, which frees the mouse.
+            if ((kb != null && kb.escapeKey.wasPressedThisFrame) ||
+                (pad != null && pad.selectButton.wasPressedThisFrame))
+                MenuUI.SetPaused(!MenuUI.Paused);
+
+            if (MenuUI.Paused)
             {
-                SetCursorLocked(true);
-                return; // don't fire on the click that grabs the mouse
+                me.Motor.MoveInput = Vector3.zero;
+                return;
             }
+            bool locked = true;
 
             // Move, relative to the camera
             Vector2 m = Vector2.zero;

@@ -7,10 +7,11 @@ namespace KnockbackRumble
     {
         WeaponDef def;
         GameObject owner;
+        bool cosmetic;   // someone else's rocket: explodes visually, hits are handled on their machine
         Vector3 velocity;
         float life = 4f;
 
-        public static void Spawn(WeaponDef def, GameObject owner, Vector3 position, Vector3 direction)
+        public static void Spawn(WeaponDef def, GameObject owner, Vector3 position, Vector3 direction, bool cosmetic = false)
         {
             var go = Shapes.Make(PrimitiveType.Capsule, "Rocket", null, position, new Vector3(0.22f, 0.35f, 0.22f),
                 Mats.Get("Weapon_rocket", def.color), false);
@@ -19,6 +20,7 @@ namespace KnockbackRumble
             r.def = def;
             r.owner = owner;
             r.velocity = direction * def.projectileSpeed;
+            r.cosmetic = cosmetic;
         }
 
         void Update()
@@ -47,7 +49,8 @@ namespace KnockbackRumble
 
         void Boom(Vector3 at)
         {
-            Weapons.Explode(at, def.radius, def.knockback, def.dent, owner, def.name, def.minLift);
+            if (cosmetic) Fx.Explosion(at, def.radius);
+            else Weapons.Explode(at, def.radius, def.knockback, def.dent, owner, def.name, def.minLift);
             Destroy(gameObject);
         }
     }

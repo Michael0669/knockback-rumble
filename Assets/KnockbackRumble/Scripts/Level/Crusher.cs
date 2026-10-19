@@ -34,7 +34,7 @@ namespace KnockbackRumble
         void FixedUpdate()
         {
             float cycle = waitUp + slam + waitDown + rise;
-            float t = Mathf.Repeat(Time.time + phase, cycle);
+            float t = Mathf.Repeat(Net.Time + phase, cycle); // shared clock: same timing on every machine
             float y;
             bool slamming = false, warning = false;
 

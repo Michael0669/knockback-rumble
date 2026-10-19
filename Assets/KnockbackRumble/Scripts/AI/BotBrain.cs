@@ -186,7 +186,7 @@ namespace KnockbackRumble
             {
                 var rb = hit.collider.attachedRigidbody;
                 if (rb != null && (rb.gameObject == gameObject || rb.gameObject == b.gameObject)) continue;
-                if (rb != null && !rb.isKinematic) continue; // other dummies don't block the view
+                if (hit.collider.GetComponentInParent<DentBody>() != null) continue; // other dummies don't block the view
                 return false;
             }
             return true;

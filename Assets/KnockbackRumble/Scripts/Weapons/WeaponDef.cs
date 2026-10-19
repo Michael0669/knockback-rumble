@@ -10,6 +10,7 @@ namespace KnockbackRumble
     /// </summary>
     public class WeaponDef
     {
+        public byte netId;             // 1 shove, 2 pistol, 3 rocket (0 = none)
         public string id;
         public string name;
         public WeaponKind kind;
@@ -25,24 +26,43 @@ namespace KnockbackRumble
 
         public static readonly WeaponDef Shove = new WeaponDef
         {
-            id = "shove", name = "Shove", kind = WeaponKind.Melee,
+            netId = 1, id = "shove", name = "Shove", kind = WeaponKind.Melee,
             cooldown = 0.8f, knockback = 9f, dent = 6f, minLift = 0.3f,
             range = 1.1f, radius = 1.0f, color = Palette.White,
         };
 
         public static readonly WeaponDef PopPistol = new WeaponDef
         {
-            id = "pistol", name = "Pop Pistol", kind = WeaponKind.Hitscan, ammo = 8,
+            netId = 2, id = "pistol", name = "Pop Pistol", kind = WeaponKind.Hitscan, ammo = 8,
             cooldown = 0.3f, knockback = 4.5f, dent = 5f, minLift = 0.2f,
             range = 60f, color = new Color(0.25f, 0.85f, 0.95f),
         };
 
         public static readonly WeaponDef RocketLauncher = new WeaponDef
         {
-            id = "rocket", name = "Rocket Launcher", kind = WeaponKind.Rocket, ammo = 3,
+            netId = 3, id = "rocket", name = "Rocket Launcher", kind = WeaponKind.Rocket, ammo = 3,
             cooldown = 0.9f, knockback = 16f, dent = 18f, minLift = 0.35f,
             radius = 4f, projectileSpeed = 30f, color = new Color(0.95f, 0.25f, 0.2f),
         };
+
+        public static WeaponDef ById(byte netId)
+        {
+            switch (netId)
+            {
+                case 1: return Shove;
+                case 2: return PopPistol;
+                case 3: return RocketLauncher;
+                default: return null;
+            }
+        }
+
+        public static WeaponDef ByName(string name)
+        {
+            if (name == Shove.name) return Shove;
+            if (name == PopPistol.name) return PopPistol;
+            if (name == RocketLauncher.name) return RocketLauncher;
+            return null;
+        }
 
         /// <summary>"pistol", "rocket", or "random" (55% pistol / 45% rocket).</summary>
         public static WeaponDef FromId(string id)

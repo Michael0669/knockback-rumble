@@ -17,6 +17,42 @@ namespace KnockbackRumble
             }
         }
 
+        /// <summary>
+        /// Replays someone else's shot on this machine: same visuals, no hits
+        /// (their machine works out who got hit and tells the victims).
+        /// </summary>
+        public static void FireCosmetic(WeaponDef def, GameObject owner, Vector3 origin, Vector3 direction)
+        {
+            Vector3 dir = direction.sqrMagnitude < 0.0001f ? owner.transform.forward : direction.normalized;
+            switch (def.kind)
+            {
+                case WeaponKind.Melee:
+                {
+                    Vector3 flat = Shapes.Flat(dir).normalized;
+                    if (flat.sqrMagnitude < 0.01f) flat = owner.transform.forward;
+                    Fx.Puff(owner.transform.position + Vector3.up * 1.0f + flat * def.range, 0.6f, Palette.White);
+                    break;
+                }
+                case WeaponKind.Hitscan:
+                {
+                    Vector3 end = origin + dir * def.range;
+                    float best = float.MaxValue;
+                    foreach (var hit in Physics.RaycastAll(origin, dir, def.range, ~0, QueryTriggerInteraction.Ignore))
+                    {
+                        var rb = hit.collider.attachedRigidbody;
+                        if (rb != null && rb.gameObject == owner) continue;
+                        if (hit.distance < best) { best = hit.distance; end = hit.point; }
+                    }
+                    if (best < float.MaxValue) Fx.Puff(end, 0.35f, def.color);
+                    Fx.Tracer(origin, end, def.color);
+                    break;
+                }
+                case WeaponKind.Rocket:
+                    Rocket.Spawn(def, owner, origin, dir, true);
+                    break;
+            }
+        }
+
         static void Shove(WeaponDef def, GameObject owner, Vector3 dir)
         {
             Vector3 flat = Shapes.Flat(dir).normalized;

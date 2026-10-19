@@ -22,7 +22,7 @@ namespace KnockbackRumble
         void FixedUpdate()
         {
             if (pivot == null || ball == null) return;
-            float angle = maxAngle * Mathf.Sin(Time.time / period * Mathf.PI * 2f + phase);
+            float angle = maxAngle * Mathf.Sin(Net.Time / period * Mathf.PI * 2f + phase); // shared clock: same swing on every machine
             pivot.localRotation = Quaternion.Euler(0f, 0f, angle);
 
             Vector3 pos = ball.position;

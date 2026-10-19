@@ -42,12 +42,17 @@ namespace KnockbackRumble
         public bool InputLocked { get; set; }
         public float SpeedMultiplier { get; set; } = 1f;
 
-        public bool Grounded { get; private set; }
-        public bool Diving { get; private set; }
-        public bool Stunned => stunTimer > 0f;
+        public bool Grounded { get => IsRemote ? remoteGrounded : grounded; private set => grounded = value; }
+        public bool Diving { get => IsRemote ? remoteDiving : diving; private set => diving = value; }
+        public bool Stunned => IsRemote ? remoteStunned : stunTimer > 0f;
         public float StunTimeLeft => stunTimer;
-        public Vector3 Velocity => rb != null ? rb.linearVelocity : Vector3.zero;
+        public Vector3 Velocity => IsRemote ? remoteVelocity : (rb != null ? rb.linearVelocity : Vector3.zero);
         public Rigidbody Body => rb;
+
+        /// <summary>Simulated on another machine: physics off, state comes from the network.</summary>
+        public bool IsRemote { get; private set; }
+        bool grounded, diving, remoteGrounded, remoteStunned, remoteDiving;
+        Vector3 remoteVelocity;
 
         Rigidbody rb;
         CapsuleCollider capsule;
@@ -83,6 +88,31 @@ namespace KnockbackRumble
 
         // ---------- Commands ----------
 
+        public void SetRemote(bool remote)
+        {
+            IsRemote = remote;
+            if (remote)
+            {
+                rb.collisionDetectionMode = CollisionDetectionMode.Discrete; // must change before going kinematic
+                rb.isKinematic = true;
+                rb.interpolation = RigidbodyInterpolation.None;
+            }
+            else
+            {
+                rb.isKinematic = false;
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            }
+        }
+
+        public void SetRemoteState(Vector3 velocity, bool isGrounded, bool isStunned, bool isDiving)
+        {
+            remoteVelocity = velocity;
+            remoteGrounded = isGrounded;
+            remoteStunned = isStunned;
+            remoteDiving = isDiving;
+        }
+
         public void QueueJump()
         {
             jumpBuffer = jumpBufferTime;
@@ -94,6 +124,7 @@ namespace KnockbackRumble
         /// <summary>Instant velocity change from a hit or explosion.</summary>
         public void Launch(Vector3 impulse, float stun)
         {
+            if (IsRemote) return;
             Vector3 v = rb.linearVelocity;
             if (impulse.y > 0f && v.y < 0f) v.y = 0f; // rocket jumps work even while falling
             v += impulse;
@@ -120,6 +151,7 @@ namespace KnockbackRumble
 
         public void Teleport(Vector3 position, Quaternion rotation)
         {
+            if (IsRemote) { transform.SetPositionAndRotation(position, rotation); return; }
             rb.position = position;
             rb.rotation = rotation;
             transform.SetPositionAndRotation(position, rotation);
@@ -134,6 +166,7 @@ namespace KnockbackRumble
 
         void FixedUpdate()
         {
+            if (IsRemote) return;
             float dt = Time.fixedDeltaTime;
             UpdateGround(dt);
 

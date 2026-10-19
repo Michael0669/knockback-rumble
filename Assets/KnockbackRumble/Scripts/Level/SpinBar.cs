@@ -13,10 +13,14 @@ namespace KnockbackRumble
         public Transform bar;
 
         readonly HitCooldown cooldown = new HitCooldown();
+        float baseYaw;
+
+        void Awake() => baseYaw = transform.eulerAngles.y;
 
         void FixedUpdate()
         {
-            transform.Rotate(0f, degreesPerSecond * Time.fixedDeltaTime, 0f, Space.World);
+            // Angle comes from the shared clock so the bar is in the same place on every machine.
+            transform.rotation = Quaternion.Euler(0f, baseYaw + degreesPerSecond * Net.Time, 0f);
             Vector3 axis = transform.rotation * Vector3.right;
             Vector3 center = transform.position;
             float half = length * 0.5f;

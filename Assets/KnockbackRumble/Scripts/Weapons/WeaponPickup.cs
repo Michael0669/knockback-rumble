@@ -17,8 +17,11 @@ namespace KnockbackRumble
 
         public bool Available { get; private set; } = true;
 
+        /// <summary>Same on every machine (crates are numbered by position when the match starts).</summary>
+        public int Index;
+
         Transform crate;
-        float timer;
+        float timer, nextRequest;
 
         /// <summary>Called by the level builder (edit mode) to make the trigger and crate mesh.</summary>
         public void Setup(string id)
@@ -47,8 +50,14 @@ namespace KnockbackRumble
         {
             if (!Available)
             {
+                // Only the host decides when crates come back (it tells everyone else).
+                if (!Net.IsHost) return;
                 timer -= Time.deltaTime;
-                if (timer <= 0f) SetAvailable(true);
+                if (timer <= 0f)
+                {
+                    SetAvailable(true);
+                    if (MatchController.Instance != null) MatchController.Instance.HostCrateRespawned(this);
+                }
                 return;
             }
             if (crate != null)
@@ -58,20 +67,44 @@ namespace KnockbackRumble
             }
         }
 
-        void OnTriggerEnter(Collider other)
+        void OnTriggerEnter(Collider other) => TryGrab(other);
+        void OnTriggerStay(Collider other) => TryGrab(other);
+
+        void TryGrab(Collider other)
         {
-            if (!Available) return;
-            var holder = other.GetComponentInParent<WeaponHolder>();
-            if (holder == null) return;
-            var def = WeaponDef.FromId(weaponId);
-            if (holder.Held == def && holder.Ammo >= def.ammo) return; // already full, leave it for someone else
-            holder.Give(def);
+            if (!Available || Time.time < nextRequest) return;
+            var c = other.GetComponentInParent<Contestant>();
+            if (c == null || !c.IsLocal) return; // each machine only grabs for its own dummies
+            var holder = c.Weapons;
+            if (weaponId != "random")
+            {
+                var def = WeaponDef.FromId(weaponId);
+                if (holder.Held == def && holder.Ammo >= def.ammo) return; // already full, leave it for someone else
+            }
+            nextRequest = Time.time + 0.5f;
 
-            var c = holder.GetComponent<Contestant>();
-            if (c != null && c.IsPlayer) Announcer.ShowToast("Got the " + def.name + "!");
+            if (MatchController.Instance != null) MatchController.Instance.RequestCrate(this, c);
+            else Take(c, WeaponDef.FromId(weaponId));
+        }
 
+        /// <summary>Resolves "random" into an actual weapon. Called on the host.</summary>
+        public WeaponDef Roll() => WeaponDef.FromId(weaponId);
+
+        /// <summary>The crate was taken by c (on every machine). Only the owner of c gets the weapon.</summary>
+        public void Take(Contestant c, WeaponDef def)
+        {
             SetAvailable(false);
             timer = respawnTime;
+            if (c == null || !c.IsLocal || def == null) return;
+            c.Weapons.Give(def);
+            if (c.IsPlayer) Announcer.ShowToast("Got the " + def.name + "!");
+        }
+
+        public void ResetCrate()
+        {
+            SetAvailable(true);
+            timer = 0f;
+            nextRequest = 0f;
         }
 
         public void SetAvailable(bool on)

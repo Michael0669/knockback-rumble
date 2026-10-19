@@ -1,11 +1,11 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace KnockbackRumble
 {
     /// <summary>
-    /// Entry point for the offline prototype. On Play it finds (or builds) the course,
-    /// spawns you plus bots, hooks up the camera and starts the race.
+    /// Entry point. On Play it finds (or builds) the course, starts Steam and the
+    /// network session, sets up the camera, and shows the main menu. Races are started
+    /// from the menu (offline vs bots, or online through the lobby).
     /// </summary>
     public class PrototypeBootstrap : MonoBehaviour
     {
@@ -16,12 +16,17 @@ namespace KnockbackRumble
 
         void Start()
         {
+            Application.runInBackground = true; // keep the network running when the window isn't focused
             var course = CourseInfo.Current;
             if (course == null) course = ScrapSprintBuilder.Build(null);
 
-            var race = GetComponent<RaceManager>();
-            if (race == null) race = gameObject.AddComponent<RaceManager>();
+            SteamService.Ensure();
+            NetSession.Ensure();
+            NetVoice.Ensure();
+
+            if (GetComponent<RaceManager>() == null) gameObject.AddComponent<RaceManager>();
             if (GetComponent<HUD>() == null) gameObject.AddComponent<HUD>();
+            if (GetComponent<MenuUI>() == null) gameObject.AddComponent<MenuUI>();
 
             // Camera
             var camGo = Camera.main != null ? Camera.main.gameObject : new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
@@ -32,35 +37,13 @@ namespace KnockbackRumble
             var cam = camGo.GetComponent<ThirdPersonCamera>();
             if (cam == null) cam = camGo.AddComponent<ThirdPersonCamera>();
 
-            // Contestants: you, plus a random selection of voice packs for the bots
-            var list = new List<Contestant>();
-            var player = Contestant.Create(playerName, Personas.Player.Color, true, Personas.Player, race.SpawnPointFor(course, 0), Quaternion.identity);
-            player.gameObject.AddComponent<PlayerInputDriver>().Init(player, cam);
-            cam.SetTarget(player.transform);
-            list.Add(player);
-
-            var personas = new List<Persona>(Personas.Bots);
-            for (int i = 0; i < botCount; i++)
-            {
-                Persona persona;
-                if (personas.Count > 0)
-                {
-                    int pick = Random.Range(0, personas.Count);
-                    persona = personas[pick];
-                    personas.RemoveAt(pick);
-                }
-                else
-                {
-                    persona = Personas.Bots[i % Personas.Bots.Length];
-                }
-
-                string name = list.Exists(c => c.DisplayName == persona.Name) ? persona.Name + " " + (i + 1) : persona.Name;
-                var bot = Contestant.Create(name, persona.Color, false, persona, race.SpawnPointFor(course, i + 1), Quaternion.identity);
-                bot.gameObject.AddComponent<BotBrain>().Init(bot, course, Random.Range(botSkillMin, botSkillMax));
-                list.Add(bot);
-            }
-
-            race.Begin(course, list);
+            var match = GetComponent<MatchController>();
+            if (match == null) match = gameObject.AddComponent<MatchController>();
+            match.OfflineBots = botCount;
+            match.OfflineName = playerName;
+            match.BotSkillMin = botSkillMin;
+            match.BotSkillMax = botSkillMax;
+            match.Init(course, cam);
         }
     }
 }

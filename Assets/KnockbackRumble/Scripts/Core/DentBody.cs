@@ -22,6 +22,8 @@ namespace KnockbackRumble
         public float dentScaling = 1.2f;
 
         public float Dent { get; private set; }
+        /// <summary>False for dummies simulated on another machine (their hits get sent there).</summary>
+        public bool IsLocal { get; set; } = true;
         public DummyMotor Motor { get; private set; }
         public GameObject LastAttacker { get; private set; }
         public string LastWeapon { get; private set; }
@@ -44,6 +46,16 @@ namespace KnockbackRumble
         /// <param name="minLift">Minimum upward share of the launch direction.</param>
         public void Hit(Vector3 direction, float baseKnock, float dentAdd, GameObject attacker, string weapon, float minLift = 0.25f)
         {
+            if (!IsLocal)
+            {
+                // This dummy lives on another machine. If one of OUR dummies caused the hit, tell its owner.
+                // Hazards (no attacker) and other machines' shots are handled on the owner's machine instead.
+                var source = attacker != null ? attacker.GetComponent<DentBody>() : null;
+                if (source != null && source.IsLocal && MatchController.Instance != null)
+                    MatchController.Instance.SendHit(this, direction, baseKnock, dentAdd, attacker, weapon, minLift);
+                return;
+            }
+
             bool self = attacker == gameObject;
             if (self) dentAdd *= 0.5f;
 
@@ -74,6 +86,9 @@ namespace KnockbackRumble
 
             Launched?.Invoke(this, knock, attacker, weapon);
         }
+
+        /// <summary>Remote dummies just display the Dent their owner reports.</summary>
+        public void SetRemoteDent(float dent) => Dent = dent;
 
         public void ResetDent()
         {

@@ -39,6 +39,14 @@ namespace KnockbackRumble
             if (visual != null) visual.ShowWeapon(def);
         }
 
+        /// <summary>Remote dummies: just show what their owner says they're holding.</summary>
+        public void SetRemote(WeaponDef def)
+        {
+            Held = def;
+            Ammo = def != null ? def.ammo : 0;
+            if (visual != null) visual.ShowWeapon(def);
+        }
+
         public void Clear()
         {
             Held = null;
@@ -51,7 +59,9 @@ namespace KnockbackRumble
             if (!CanFire) return false;
             fireTimer = Held.cooldown;
             Ammo--;
-            Weapons.Fire(Held, gameObject, FirePoint, aimDirection);
+            var def = Held;
+            Weapons.Fire(def, gameObject, FirePoint, aimDirection);
+            ReportFire(def, aimDirection);
             if (Ammo <= 0) Clear();
             return true;
         }
@@ -61,8 +71,16 @@ namespace KnockbackRumble
             if (!CanShove) return false;
             shoveTimer = WeaponDef.Shove.cooldown;
             Weapons.Fire(WeaponDef.Shove, gameObject, FirePoint, transform.forward);
+            ReportFire(WeaponDef.Shove, transform.forward);
             if (visual != null) visual.PlayShove();
             return true;
+        }
+
+        void ReportFire(WeaponDef def, Vector3 direction)
+        {
+            var match = MatchController.Instance;
+            var me = GetComponent<Contestant>();
+            if (match != null && me != null) match.ReportFire(me, def, FirePoint, direction);
         }
     }
 }

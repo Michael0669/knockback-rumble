@@ -51,7 +51,7 @@ namespace KnockbackRumble
             float best = dist;
             foreach (var hit in Physics.SphereCastAll(pivot, collisionRadius, dir, dist, ~0, QueryTriggerInteraction.Ignore))
             {
-                if (hit.collider.attachedRigidbody != null && !hit.collider.attachedRigidbody.isKinematic) continue;
+                if (hit.collider.GetComponentInParent<DentBody>() != null) continue; // dummies never block the camera
                 if (hit.distance <= 0f) continue;
                 if (hit.distance < best) best = hit.distance;
             }
