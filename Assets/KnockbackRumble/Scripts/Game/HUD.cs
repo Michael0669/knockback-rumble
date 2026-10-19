@@ -37,7 +37,7 @@ namespace KnockbackRumble
             float W = Screen.width / scale;
             float H = RefHeight;
 
-            DrawNameTags(race, scale);
+            DrawBarkFeed(race, H);
             DrawTopBar(race, W);
             DrawAnnouncer(W);
             DrawPlayerPanel(race, W, H);
@@ -140,26 +140,26 @@ namespace KnockbackRumble
             Label(new Rect(r.x, y + 4f, r.width, 34f), "Press R (or Start) to run it back", center, Palette.Gold);
         }
 
-        void DrawNameTags(RaceManager race, float scale)
+        /// <summary>
+        /// Bot one-liners as a small feed on the left edge, out of the way of the race
+        /// (replaces the overhead name tags and speech bubbles).
+        /// </summary>
+        void DrawBarkFeed(RaceManager race, float H)
         {
-            var cam = Camera.main;
-            if (cam == null) return;
-            foreach (var c in race.Contestants)
+            var recent = race.Contestants.FindAll(c => c != null && !c.IsPlayer && c.BarkText != null && Time.time - c.BarkTime < 3.5f);
+            if (recent.Count == 0) return;
+            recent.Sort((a, b) => b.BarkTime.CompareTo(a.BarkTime));
+            var style = new GUIStyle(small) { fontSize = 18, wordWrap = true };
+            float y = H * 0.42f;
+            for (int i = 0; i < recent.Count && i < 3; i++)
             {
-                if (c == null || c.IsPlayer) continue;
-                Vector3 sp = cam.WorldToScreenPoint(c.HeadPosition);
-                if (sp.z <= 0f || sp.z > 45f) continue;
-                float x = sp.x / scale;
-                float y = (Screen.height - sp.y) / scale;
-                string tag = c.DisplayName + "  " + Mathf.RoundToInt(c.Dent.Dent) + "%";
-                Label(new Rect(x - 120f, y - 24f, 240f, 24f), tag, center, Color.white);
-
-                if (c.BarkText != null && Time.time - c.BarkTime < 2.5f)
-                {
-                    var br = new Rect(x - 150f, y - 82f, 300f, 54f);
-                    Box(br, new Color(1f, 1f, 1f, 0.92f));
-                    Label(br, c.BarkText, center, Color.black);
-                }
+                var c = recent[i];
+                float alpha = Mathf.Clamp01((3.5f - (Time.time - c.BarkTime)) / 0.5f);
+                var col = c.Color;
+                col.a = alpha;
+                Label(new Rect(24f, y, 440f, 24f), c.DisplayName.ToUpperInvariant(), style, col);
+                Label(new Rect(24f, y + 22f, 440f, 48f), "\"" + c.BarkText + "\"", style, new Color(1f, 1f, 1f, alpha));
+                y += 74f;
             }
         }
 
