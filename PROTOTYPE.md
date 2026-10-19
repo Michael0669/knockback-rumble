@@ -36,7 +36,7 @@ The purple "Express Lane" wall at the crusher hall is only reachable this way (o
 
 - **Dent meter:** no health. Every hit adds Dent (0–200%); the higher it is, the farther the next hit launches you.
   Fall off and you respawn at the last checkpoint with Dent reset.
-- **Weapons:** Shove (always), Pop Pistol (12 shots, light push), Rocket Launcher (3 rockets, big splash).
+- **Weapons:** Shove (always), Pop Pistol (8 shots, light push), Rocket Launcher (3 rockets, big splash).
   Your own explosions launch you but add only half the Dent and never stun you.
 - **Course:** start pad → backwards conveyor with bumpers → wrecking-ball bridge → jump gaps →
   crusher hall (with rocket-jump shortcut) → spin bar → ramp → finish. 3 checkpoints.
