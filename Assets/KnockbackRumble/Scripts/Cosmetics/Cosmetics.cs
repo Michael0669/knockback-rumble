@@ -16,6 +16,7 @@ namespace KnockbackRumble
     /// <summary>Where outfit pieces attach on a dummy, and the body measurements they're built around.</summary>
     public class DummyRig
     {
+        // Item space: transforms on each bone scaled so items sized for the original dummy fit the soldier
         public Transform model, head, armL, armR, legL, legR;
         public Material body;
 
@@ -24,6 +25,8 @@ namespace KnockbackRumble
         // Limb space (from the shoulder / hip pivot)
         public const float UpperArmY = -0.17f, ForearmY = -0.42f, HandY = -0.6f;
         public const float ThighY = -0.2f, ShinY = -0.48f, FootY = -0.68f;
+        // Where the soldier's real hand is, in its arm's own space (weapons attach here)
+        public const float BodyHandY = -0.66f;
     }
 
     /// <summary>Handed to an item's build function: makes parts on the rig and remembers them so they can be removed.</summary>

@@ -52,7 +52,11 @@ Your level, XP and wallet show at the bottom right of the main menu.
 
 ## Customize (outfits)
 
+Everyone plays a chunky low-poly soldier: faceted camo pants, a plate-carrier vest in their player color, and a random
+haircut, beard and skin tone (seeded from the color, so all PCs see the same guy).
+
 **CUSTOMIZE** (main menu, lobby, pause menu) dresses your dummy: hat, mask, shirt, pants, shoes, gloves.
+Equipping an item hides the base part it covers (hat hides hair, shirt hides the vest, and so on).
 One item per slot is free; the rest cost wallet cash (what you keep from shows). Everyone sees your outfit
 online, and bots wear random outfits. Items live in `Scripts/Cosmetics/Cosmetics.cs`: each one is a line in the
 list plus a small build function.
@@ -154,7 +158,7 @@ Assets/KnockbackRumble/
   Art/Resources/SFX/ sound effects and music (WAV files saved as .bytes, made by Tools/make_sfx.py)
   Art/Resources/UI/  menu art (PNG files saved as .bytes) + fonts (made by Tools/make_ui_art.py; fonts are OFL / Apache licensed)
   Editor/            Knockback Rumble menu, voice generator, build step (writes steam_appid.txt next to builds)
-  Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual (the dummy model + outfits), Contestant
+  Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual (the soldier model + outfits), Contestant
   Scripts/Cosmetics/ Cosmetics (outfit items), CustomizePreview (the spinning dummy on the CUSTOMIZE screen)
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera (with aim zoom)
   Scripts/Loadout/   Loadouts (perks, gadgets, streaks, unlock levels) and Profile (level, XP, wallet)

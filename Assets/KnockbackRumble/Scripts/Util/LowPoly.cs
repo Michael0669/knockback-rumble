@@ -28,6 +28,50 @@ namespace KnockbackRumble
         public static Mesh Torus(int ring = 14, int tube = 6, float thickness = 0.3f) =>
             Get("Torus" + ring + "_" + tube + "_" + Mathf.RoundToInt(thickness * 100), () => BuildTorus(ring, tube, thickness));
 
+        /// <summary>A slightly lumpy icosphere: good for muscles, boots and chunky body parts.</summary>
+        public static Mesh Chunk(int variant = 0) => Get("Chunk" + variant, () => BuildIco(1, 0.07f, 101 + variant * 13));
+
+        /// <summary>
+        /// The same mesh split into "groups" submeshes in camo-like patches, so each facet can get one of
+        /// several materials (the faceted camo look). Use with MakeMulti and one material per group.
+        /// </summary>
+        public static Mesh Camo(Mesh src, string srcKey, int groups, int seed, float patchSize = 2.2f) =>
+            Get("Camo_" + srcKey + "_" + groups + "_" + seed, () => BuildPatched(src, groups, seed, patchSize));
+
+        /// <summary>A visual-only object with a multi-material mesh (see Camo).</summary>
+        public static GameObject MakeMulti(Mesh mesh, string name, Transform parent, Vector3 localPos, Vector3 scale, Material[] mats,
+            Vector3? euler = null)
+        {
+            var go = Make(mesh, name, parent, localPos, scale, mats.Length > 0 ? mats[0] : null, euler);
+            go.GetComponent<MeshRenderer>().sharedMaterials = mats;
+            return go;
+        }
+
+        static Mesh BuildPatched(Mesh src, int groups, int seed, float patchSize)
+        {
+            var v = src.vertices;
+            var n = src.normals;
+            var tris = src.triangles;
+            var lists = new List<int>[groups];
+            for (int g = 0; g < groups; g++) lists[g] = new List<int>();
+            float o = seed * 7.31f;
+            for (int i = 0; i + 2 < tris.Length; i += 3)
+            {
+                Vector3 c = (v[tris[i]] + v[tris[i + 1]] + v[tris[i + 2]]) / 3f * patchSize;
+                float val = (Mathf.PerlinNoise(c.x + o, c.y + o * 0.5f) + Mathf.PerlinNoise(c.z + o * 1.3f, c.x - c.y + o)) * 0.5f;
+                val = Mathf.Clamp01((val - 0.3f) / 0.4f); // spread the noise across the groups
+                int g = Mathf.Clamp(Mathf.FloorToInt(val * groups), 0, groups - 1);
+                lists[g].Add(tris[i]); lists[g].Add(tris[i + 1]); lists[g].Add(tris[i + 2]);
+            }
+            var mesh = new Mesh { name = src.name + "_Camo" };
+            mesh.vertices = v;
+            mesh.normals = n;
+            mesh.subMeshCount = groups;
+            for (int g = 0; g < groups; g++) mesh.SetTriangles(lists[g], g);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
         /// <summary>A visual-only object (no collider) with one of these meshes.</summary>
         public static GameObject Make(Mesh mesh, string name, Transform parent, Vector3 localPos, Vector3 scale, Material mat,
             Vector3? euler = null)
