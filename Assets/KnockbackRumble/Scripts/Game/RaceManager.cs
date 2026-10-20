@@ -129,6 +129,14 @@ namespace KnockbackRumble
             if (Player == c) Player = null;
         }
 
+        /// <summary>Everyone starts facing the right way: down the course, or toward the middle of an arena.</summary>
+        public Quaternion SpawnFacing(CourseInfo course, Vector3 at)
+        {
+            if (course == null || course.kind == EventKind.Gauntlet) return Quaternion.identity;
+            Vector3 to = Shapes.Flat(course.center - at);
+            return to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : Quaternion.identity;
+        }
+
         public Vector3 SpawnPointFor(CourseInfo course, int i)
         {
             if (course != null && course.spawnPoints != null && course.spawnPoints.Length > 0)
@@ -222,7 +230,7 @@ namespace KnockbackRumble
 
             bool eliminate = Kind == EventKind.Crumble && State == Phase.Racing;
             Vector3 p = eliminate ? LoungePoint() : RespawnFor(c);
-            c.Motor.Teleport(p, Quaternion.identity);
+            c.Motor.Teleport(p, eliminate ? Quaternion.Euler(0f, 180f, 0f) : SpawnFacing(Course, p));
             c.Dent.ResetDent();
             if (bot != null) bot.ResetPath();
 

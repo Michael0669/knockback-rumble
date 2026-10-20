@@ -268,6 +268,8 @@ namespace KnockbackRumble
             }
 
             bool canShoot = holder.Held != null && holder.Ammo > 0;
+            // Waiting for GO: stand still facing forward (don't spin around to aim at the dummy behind you).
+            if (me.Motor.InputLocked) { me.Motor.FacingInput = Vector3.zero; return; }
             me.Motor.FacingInput = canShoot && target != null ? Shapes.Flat(target.transform.position - transform.position) : Vector3.zero;
 
             if (canShoot && target != null && fireTimer <= 0f && holder.CanFire &&
@@ -341,6 +343,8 @@ namespace KnockbackRumble
                 if (c != null && (c.Finished || c.Eliminated)) continue;
                 float d = Vector3.Distance(from, b.Center);
                 if (d >= range) continue;
+                // On the race course, only bother with dummies ahead of you (or right next to you).
+                if (!Arena && b.transform.position.z < transform.position.z - 2f) continue;
                 if (!HasLineOfSight(from, b)) continue;
                 // Bag carriers are juicy targets.
                 float score = d;

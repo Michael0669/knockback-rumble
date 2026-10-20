@@ -4,20 +4,25 @@ using UnityEngine;
 namespace KnockbackRumble
 {
     /// <summary>
-    /// Builds the Scrap Sprint greybox. The course runs along +Z:
+    /// Builds The Gauntlet (the Scrap Sprint course). It runs along +Z:
     ///
-    ///   Start pad -> gap -> backwards conveyor with bumpers -> CP1
-    ///   -> narrow bridge with 3 wrecking balls -> CP2
-    ///   -> 4 floating platforms (jump gaps) -> CP3
-    ///   -> crusher hall (3 rows of slamming blocks)   [rocket-jump shortcut ledge on the left]
-    ///   -> spin bar -> ramp -> finish line.
+    ///   Start gate -> backwards conveyor with bumpers -> CP1
+    ///   -> narrow bridge with 3 spiked wrecking balls on crane gantries -> CP2
+    ///   -> 4 hover platforms (jump gaps) -> CP3
+    ///   -> crusher hall (3 rows of presses)   [rocket-jump shortcut along the shipping containers]
+    ///   -> spin bar -> Punch Alley (boxing gloves out of the walls) -> CP4
+    ///   -> Piston Pit (rising and sinking pillars) -> Wind Tunnel (fans + swinging plungers) -> CP5
+    ///   -> ramp -> finish stage.
     ///
     /// All numbers live here, so changing the layout means editing this file and
-    /// re-running "Knockback Rumble > Build Scrap Sprint Scene".
+    /// re-running "Knockback Rumble > Build Show Scene".
     /// </summary>
     public static class ScrapSprintBuilder
     {
-        static Material floor, floorDark, belt, stripe, metal, rust, hazard, checkpointMat, gold, shortcut, bumper, pit, black, white, potty;
+        /// <summary>How much farther the finish is than in the original layout (room for the new sections).</summary>
+        const float F = 108f;
+
+        static Material floor, floorDark, belt, stripe, metal, rust, hazard, checkpointMat, gold, bumper, pit, black, white, potty;
 
         public static CourseInfo Build(Transform parent)
         {
@@ -35,8 +40,12 @@ namespace KnockbackRumble
             BuildWreckingBridge(Group(root, "3_WreckingBalls"));
             BuildGaps(Group(root, "4_Gaps"));
             BuildCrusherHall(Group(root, "5_Crushers"));
-            BuildFinish(Group(root, "6_Finish"));
-            BuildScenery(Group(root, "7_Scenery"));
+            BuildSpinBar(Group(root, "6_SpinBar"));
+            BuildPunchAlley(Group(root, "7_PunchAlley"));
+            BuildPistonPit(Group(root, "8_PistonPit"));
+            BuildWindTunnel(Group(root, "9_WindTunnel"));
+            BuildFinish(Group(root, "10_Finish"));
+            BuildScenery(Group(root, "11_Scenery"));
 
             info.waypoints = new[]
             {
@@ -45,8 +54,16 @@ namespace KnockbackRumble
                 new Vector3(0f, 0f, 77f), new Vector3(0f, 0f, 81f),
                 new Vector3(-1.5f, 0.5f, 89f), new Vector3(1.5f, 1f, 96.5f), new Vector3(-1f, 0.5f, 104f), new Vector3(1f, 0f, 111.5f),
                 new Vector3(0f, 0f, 118f), new Vector3(0f, 0f, 124f), new Vector3(0f, 0f, 131.5f), new Vector3(0f, 0f, 138.5f),
-                new Vector3(0f, 0f, 146f), new Vector3(3.8f, 0f, 150f), new Vector3(0f, 0f, 155f), new Vector3(0f, 1.5f, 160f),
-                new Vector3(0f, 3f, 168f), new Vector3(0f, 3f, 174f),
+                new Vector3(0f, 0f, 146f), new Vector3(3.8f, 0f, 150f), new Vector3(0f, 0f, 155f),
+                // Punch Alley, CP4
+                new Vector3(0f, 0f, 162f), new Vector3(0f, 0f, 172f), new Vector3(0f, 0f, 182f), new Vector3(0f, 0f, 189f),
+                // Piston Pit
+                new Vector3(-1.2f, 0f, 196f), new Vector3(1.2f, 0f, 200.5f), new Vector3(-1.2f, 0f, 205f), new Vector3(1.2f, 0f, 209.5f),
+                new Vector3(-1.2f, 0f, 214f), new Vector3(1.2f, 0f, 218.5f), new Vector3(0f, 0f, 223.5f),
+                // Wind Tunnel, CP5
+                new Vector3(-0.8f, 0f, 232f), new Vector3(-0.8f, 0f, 242f), new Vector3(-0.5f, 0f, 252f), new Vector3(0f, 0f, 259f),
+                // Ramp and finish
+                new Vector3(0f, 0f, 263f), new Vector3(0f, 1.5f, 268f), new Vector3(0f, 3f, 166f + F + 2f), new Vector3(0f, 3f, 174f + F),
             };
 
             return info;
@@ -63,7 +80,6 @@ namespace KnockbackRumble
             hazard = Mats.Get("Hazard_Red", Palette.Hazard);
             checkpointMat = Mats.Get("Checkpoint", Palette.Checkpoint);
             gold = Mats.Get("Gold", Palette.Gold);
-            shortcut = Mats.Get("Shortcut", Palette.Shortcut);
             bumper = Mats.Get("Bumper", Palette.Bumper);
             pit = Mats.Get("Pit", Palette.Pit);
             black = Mats.Get("Dummy_Black", Palette.Black);
@@ -76,9 +92,19 @@ namespace KnockbackRumble
         static void BuildStart(Transform g, CourseInfo info)
         {
             Floor(g, "StartPad", 0f, -8f, 10f, 16f, 0f, floorDark);
-            Block(g, "BackWall", new Vector3(0f, 1.5f, -8.5f), new Vector3(16f, 3f, 1f), metal);
-            Block(g, "RailL", new Vector3(-8.25f, 0.5f, 1f), new Vector3(0.5f, 1f, 18f), metal);
-            Block(g, "RailR", new Vector3(8.25f, 0.5f, 1f), new Vector3(0.5f, 1f, 18f), metal);
+            Kit.Railing(g, -7.85f, -8f, 10f, 0f);
+            Kit.Railing(g, 7.85f, -8f, 10f, 0f);
+
+            // Starting gate: a back wall with a sponsor screen
+            Block(g, "BackWall", new Vector3(0f, 2f, -8.5f), new Vector3(16f, 4f, 1f), Kit.Girder);
+            var panel = Mats.Unlit("Start_Panel", new Color(0.18f, 0.12f, 0.35f));
+            Kit.Box(g, "Screen", new Vector3(0f, 2.2f, -7.98f), new Vector3(14.5f, 3.2f, 0.04f), panel);
+            Props.Sign(g, "SHART ENERGY", new Vector3(0f, 2.8f, -7.94f), 0.2f, new Color(0.5f, 1f, 0.4f));
+            Props.Sign(g, "now with 40% more shart", new Vector3(0f, 1.6f, -7.94f), 0.09f, Color.white);
+
+            // Painted start line
+            for (int i = 0; i < 16; i++)
+                Kit.Box(g, "StartLine", new Vector3(-7.5f + i, 0.012f, 2.2f), new Vector3(1f, 0.01f, 0.6f), i % 2 == 0 ? black : white);
 
             var spawns = new List<Vector3>();
             float[] rows = { 1f, -1.5f, -4f, -6.5f };
@@ -88,17 +114,17 @@ namespace KnockbackRumble
                     spawns.Add(new Vector3(x, 0.05f, z));
             info.spawnPoints = spawns.ToArray();
 
-            // Ammo crates are deliberately scarce (4 on the whole course), so ammo is worth saving.
+            // Ammo crates are deliberately scarce (5 on the whole course), so ammo is worth saving.
             Pickup(g, "ammo", new Vector3(0f, 0f, 8f));
 
-            Sign(g, "SCRAP SPRINT", new Vector3(0f, 7f, 12f), 0.5f, Palette.Gold);
-            Sign(g, "brought to you by SHART ENERGY", new Vector3(0f, 5.2f, 12f), 0.18f, Color.white);
+            Kit.Arch(g, new Vector3(0f, 0f, 9.3f), 15f, 6f, gold, new Color(1f, 0.85f, 0.4f));
+            Props.Sign(g, "THE GAUNTLET", new Vector3(0f, 6.6f, 8.85f), 0.22f, Palette.Gold);
         }
 
         static void BuildConveyor(Transform g)
         {
             // Backwards belt: you run at 8, it drags you at 3. No side rails.
-            var beltGo = Floor(g, "Belt", 0f, 12.5f, 40f, 12f, 0f, belt);
+            var beltGo = Floor(g, "Belt", 0f, 12.5f, 40f, 12f, 0f, belt, false);
             var conveyor = beltGo.AddComponent<Conveyor>();
             conveyor.velocity = new Vector3(0f, 0f, -3f);
             conveyor.stripeLength = 27.5f;
@@ -109,9 +135,11 @@ namespace KnockbackRumble
             for (int i = 0; i < 11; i++)
                 Shapes.Make(PrimitiveType.Cube, "Stripe", stripes, new Vector3(0f, 0f, -13.75f + i * 2.5f), new Vector3(11.6f, 0.04f, 0.6f), stripe, false);
             conveyor.stripes = stripes;
-            var roller = Mats.Get("Prop_DarkSteel", new Color(0.3f, 0.31f, 0.34f));
             foreach (float z in new[] { 12.5f, 40f })
-                LowPoly.Make(LowPoly.Cylinder(12), "Roller", g, new Vector3(0f, -0.5f, z), new Vector3(1.1f, 12.4f, 1.1f), roller, new Vector3(0f, 0f, 90f));
+                LowPoly.Make(LowPoly.Cylinder(12), "Roller", g, new Vector3(0f, -0.5f, z), new Vector3(1.1f, 12.4f, 1.1f), Kit.Girder, new Vector3(0f, 0f, 90f));
+            // Belt side frames
+            foreach (float side in new[] { -1f, 1f })
+                Kit.IBeam(g, new Vector3(side * 6.15f, -0.45f, 12.5f), new Vector3(side * 6.15f, -0.45f, 40f), 0.9f, Kit.SafetyYellow);
 
             Vector3[] bumpers = { new Vector3(-3f, 0f, 18f), new Vector3(3f, 0f, 24f), new Vector3(-2.5f, 0f, 30f), new Vector3(3.5f, 0f, 35f) };
             foreach (var p in bumpers)
@@ -138,21 +166,17 @@ namespace KnockbackRumble
                 wb.SetParent(g, false);
                 wb.localPosition = new Vector3(0f, 0f, z);
 
-                Block(wb, "PostL", new Vector3(-7f, 6f, 0f), new Vector3(0.6f, 12f, 0.6f), metal, false);
-                Block(wb, "PostR", new Vector3(7f, 6f, 0f), new Vector3(0.6f, 12f, 0.6f), metal, false);
-                Block(wb, "Beam", new Vector3(0f, 12f, 0f), new Vector3(14.6f, 0.6f, 0.6f), metal, false);
-
+                // A yellow crane gantry holds the chain
+                Vector3 hang = Kit.Gantry(wb, Vector3.zero, 7f, 12f);
                 var pivot = new GameObject("Pivot").transform;
                 pivot.SetParent(wb, false);
-                pivot.localPosition = new Vector3(0f, 11.8f, 0f);
-                // Chain of alternating links down to a spiked steel ball
-                var chainMat = Mats.Get("Prop_DarkSteel", new Color(0.3f, 0.31f, 0.34f));
+                pivot.localPosition = hang;
                 for (int k = 0; k < 14; k++)
-                    LowPoly.Make(LowPoly.Torus(10, 4, 0.3f), "Link", pivot, new Vector3(0f, -0.4f - k * 0.62f, 0f), new Vector3(0.45f, 0.45f, 0.8f),
-                        chainMat, new Vector3(90f, k % 2 == 0 ? 0f : 90f, 0f));
+                    LowPoly.Make(LowPoly.Torus(10, 4, 0.3f), "Link", pivot, new Vector3(0f, -0.2f - k * 0.62f, 0f), new Vector3(0.45f, 0.45f, 0.8f),
+                        Kit.Girder, new Vector3(90f, k % 2 == 0 ? 0f : 90f, 0f));
                 var ball = new GameObject("Ball").transform;
                 ball.SetParent(pivot, false);
-                ball.localPosition = new Vector3(0f, -10f, 0f);
+                ball.localPosition = new Vector3(0f, -9.8f, 0f);
                 ball.localScale = Vector3.one * 3.2f;
                 WeaponModels.SpikeBall(ball, Mats.Get("SpikeBall_Body", new Color(0.22f, 0.22f, 0.25f)), metal, 0.28f);
 
@@ -170,12 +194,20 @@ namespace KnockbackRumble
             CheckpointGate(g, 1, new Vector3(0f, 0f, 81f), 10f);
             Pickup(g, "ammo", new Vector3(0f, 0f, 82.5f));
 
-            // 5x5 platforms with 2.5m gaps and small height changes
+            // 5x5 hover platforms with 2.5m gaps and small height changes
             Vector3[] plats = { new Vector3(-1.5f, 0.5f, 89f), new Vector3(1.5f, 1f, 96.5f), new Vector3(-1f, 0.5f, 104f), new Vector3(1f, 0f, 111.5f) };
+            var thruster = Mats.Unlit("Thruster", new Color(1f, 0.55f, 0.15f));
             for (int i = 0; i < plats.Length; i++)
             {
                 var p = plats[i];
-                Floor(g, "Platform_" + (i + 1), p.x, p.z - 2.5f, p.z + 2.5f, 5f, p.y, i % 2 == 0 ? rust : metal);
+                Floor(g, "Platform_" + (i + 1), p.x, p.z - 2.5f, p.z + 2.5f, 5f, p.y, i % 2 == 0 ? rust : metal, true, false);
+                // Hover engines underneath
+                for (int k = 0; k < 4; k++)
+                {
+                    var c = new Vector3(p.x + (k % 2 == 0 ? -1.5f : 1.5f), p.y - 1.4f, p.z + (k < 2 ? -1.5f : 1.5f));
+                    LowPoly.Make(LowPoly.Cylinder(8), "Engine", g, c, new Vector3(0.9f, 0.8f, 0.9f), Kit.Girder);
+                    LowPoly.Make(LowPoly.Cone(8), "Flame", g, c + Vector3.down * 0.75f, new Vector3(0.6f, 0.7f, 0.6f), thruster, new Vector3(180f, 0f, 0f));
+                }
             }
         }
 
@@ -183,7 +215,7 @@ namespace KnockbackRumble
         {
             Floor(g, "CP3_Pad", 0f, 116.5f, 122f, 14f, 0f, floorDark);
             CheckpointGate(g, 2, new Vector3(0f, 0f, 119.5f), 14f);
-            Pickup(g, "ammo", new Vector3(-5f, 0f, 120.5f)); // right next to the shortcut wall
+            Pickup(g, "ammo", new Vector3(-5f, 0f, 120.5f)); // right next to the shortcut
 
             Floor(g, "HallFloor", 0f, 122f, 148f, 14f, 0f, floor);
 
@@ -192,9 +224,12 @@ namespace KnockbackRumble
             for (int r = 0; r < rowZ.Length; r++)
             {
                 float z = rowZ[r];
-                Block(g, "HousingL_" + r, new Vector3(-7.3f, 4f, z), new Vector3(0.6f, 8f, 0.6f), metal, false);
-                Block(g, "HousingR_" + r, new Vector3(7.3f, 4f, z), new Vector3(0.6f, 8f, 0.6f), metal, false);
-                Block(g, "HousingBeam_" + r, new Vector3(0f, 8.2f, z), new Vector3(15.2f, 0.5f, 0.5f), metal, false);
+                // Press frame: two I-beam columns and a header beam with stripes
+                Kit.IBeam(g, new Vector3(-7.4f, -14f, z), new Vector3(-7.4f, 8.6f, z), 0.8f, Kit.SafetyYellow);
+                Kit.IBeam(g, new Vector3(7.4f, -14f, z), new Vector3(7.4f, 8.6f, z), 0.8f, Kit.SafetyYellow);
+                Kit.IBeam(g, new Vector3(-7.9f, 8.6f, z), new Vector3(7.9f, 8.6f, z), 0.9f, Kit.SafetyYellow);
+                for (int k = -4; k <= 4; k++)
+                    Kit.Box(g, "HeaderStripe", new Vector3(k * 1.6f, 8.6f, z), new Vector3(0.8f, 0.92f, 0.84f), black);
 
                 for (int lane = 0; lane < 2; lane++)
                 {
@@ -213,15 +248,28 @@ namespace KnockbackRumble
                 }
             }
 
-            // Rocket-jump shortcut: a 5.5m wall/ledge along the left side, all the way to the finish.
-            Block(g, "ShortcutLedge", new Vector3(-9f, 2.25f, 143f), new Vector3(4f, 6.5f, 46f), shortcut);
-            Sign(g, "EXPRESS LANE", new Vector3(-9f, 8f, 119.8f), 0.25f, Palette.Shortcut);
-            Sign(g, "(rocket jump. probably fine. - Dr. Lee Ability)", new Vector3(-9f, 6.9f, 119.8f), 0.1f, Color.white);
+            // Rocket-jump shortcut: a 5.5m ledge along the left side, made of stacked shipping containers.
+            // It skips the presses and drops you off after the hall.
+            var ledge = Block(g, "ShortcutLedge", new Vector3(-9.25f, 2.25f, 138f), new Vector3(4.5f, 6.5f, 32f), Kit.Girder);
+            ledge.GetComponent<Renderer>().enabled = false;
+            Color[] colors = { new Color(0.6f, 0.35f, 0.85f), new Color(0.2f, 0.5f, 0.75f), new Color(0.8f, 0.3f, 0.2f), new Color(0.3f, 0.6f, 0.35f) };
+            for (int i = 0; i < 5; i++)
+            {
+                float z = 125.2f + i * 6.4f;
+                // Two containers high, tops flush with the ledge (5.5 m)
+                Kit.Container(g, new Vector3(-9.25f, 0.3f, z), 0f, colors[i % colors.Length], 6.2f, i == 0 ? "EXPRESS LANE" : null);
+                Kit.Container(g, new Vector3(-9.25f, 2.9f, z), 0f, colors[(i + 2) % colors.Length], 6.2f);
+            }
+            Kit.IBeam(g, new Vector3(-9.25f, -14f, 128f), new Vector3(-9.25f, 0.3f, 128f), 0.9f, Kit.Girder);
+            Kit.IBeam(g, new Vector3(-9.25f, -14f, 148f), new Vector3(-9.25f, 0.3f, 148f), 0.9f, Kit.Girder);
+            Props.Sign(g, "EXPRESS LANE", new Vector3(-9.25f, 8f, 121.8f), 0.25f, Palette.Shortcut);
+            Props.Sign(g, "(rocket jump. probably fine. - Dr. Lee Ability)", new Vector3(-9.25f, 7f, 121.8f), 0.1f, Color.white);
         }
 
-        static void BuildFinish(Transform g)
+        static void BuildSpinBar(Transform g)
         {
             Floor(g, "AfterHall", 0f, 148f, 154f, 14f, 0f, floorDark);
+            Pickup(g, "ammo", new Vector3(5.5f, 0f, 152.5f));
 
             var spin = new GameObject("SpinBar").transform;
             spin.SetParent(g, false);
@@ -239,53 +287,220 @@ namespace KnockbackRumble
             sb.length = 13f;
             sb.barHeight = 0.8f;
             sb.bar = bar.transform;
+        }
 
-            // Ramp from (z 154, y 0) up to (z 166, y 3)
+        /// <summary>Punch Alley: a 5 m walkway with giant boxing gloves firing out of the walls on both sides.</summary>
+        static void BuildPunchAlley(Transform g)
+        {
+            Floor(g, "Alley", 0f, 154f, 186f, 5f, 0f, floor);
+            var red = Mats.Get("Glove_Red", new Color(0.85f, 0.12f, 0.1f));
+            float[] zs = { 160f, 164.5f, 169f, 173.5f, 178f, 182.5f };
+            for (int i = 0; i < zs.Length; i++)
+            {
+                float side = i % 2 == 0 ? -1f : 1f;   // alternate walls
+                var root = new GameObject("PunchWall_" + i).transform;
+                root.SetParent(g, false);
+                root.localPosition = new Vector3(side * 3.6f, 1.1f, zs[i]);
+                root.localRotation = Quaternion.Euler(0f, side < 0f ? 0f : 180f, 0f); // local +X points at the walkway
+
+                // Housing on a post from the pit
+                Kit.Box(root, "Housing", new Vector3(-0.6f, 0f, 0f), new Vector3(1.2f, 2.2f, 2.2f), Kit.SafetyYellow);
+                Kit.Box(root, "Mouth", new Vector3(0.01f, 0f, 0f), new Vector3(0.05f, 1.6f, 1.6f), black);
+                for (int k = 0; k < 4; k++)
+                    Kit.Box(root, "Stripe", new Vector3(-0.6f, 0.9f - k * 0.6f, 1.105f), new Vector3(1.2f, 0.3f, 0.01f), k % 2 == 0 ? black : Kit.SafetyYellow);
+                Kit.IBeam(root, new Vector3(-0.6f, -15f, 0f), new Vector3(-0.6f, -1.1f, 0f), 0.6f, Kit.Girder);
+
+                // Spring arm and glove
+                var arm = LowPoly.Make(LowPoly.Cylinder(8), "Arm", root, new Vector3(0.2f, 0f, 0f), new Vector3(0.35f, 0.4f, 0.35f), Kit.Steel,
+                    new Vector3(0f, 0f, 90f)).transform;
+                var glove = new GameObject("Glove").transform;
+                glove.SetParent(root, false);
+                glove.localPosition = new Vector3(0.4f, 0f, 0f);
+                LowPoly.Make(LowPoly.Ico(1), "Fist", glove, new Vector3(0.55f, 0f, 0f), new Vector3(1.2f, 1.1f, 1.25f), red);
+                LowPoly.Make(LowPoly.Ico(1), "Thumb", glove, new Vector3(0.45f, 0.15f, 0.6f), new Vector3(0.45f, 0.4f, 0.4f), red);
+                LowPoly.Make(LowPoly.Cylinder(10), "Cuff", glove, new Vector3(-0.05f, 0f, 0f), new Vector3(0.95f, 0.35f, 0.95f), white, new Vector3(0f, 0f, 90f));
+
+                var pg = root.gameObject.AddComponent<PunchGlove>();
+                pg.glove = glove;
+                pg.arm = arm;
+                pg.reach = 3.6f;
+                pg.period = 2.4f + (i % 3) * 0.3f;
+                pg.phase = i * 0.7f;
+            }
+
+            // CP4
+            Floor(g, "CP4_Pad", 0f, 186f, 192f, 10f, 0f, floorDark);
+            CheckpointGate(g, 3, new Vector3(0f, 0f, 189f), 10f);
+        }
+
+        /// <summary>Piston Pit: pillars that rise and sink in a wave. Time your jumps.</summary>
+        static void BuildPistonPit(Transform g)
+        {
+            float[] zs = { 196f, 200.5f, 205f, 209.5f, 214f, 218.5f };
+            for (int i = 0; i < zs.Length; i++)
+            {
+                float x = i % 2 == 0 ? -1.2f : 1.2f;
+                var pillar = Block(g, "Pillar_" + i, new Vector3(x, -0.6f, zs[i]), new Vector3(3.4f, 1f, 3.4f), i % 2 == 0 ? rust : metal);
+                // Painted rim and a piston under it (children move with it; sizes are fractions of the 3.4 x 1 x 3.4 top)
+                Kit.Box(pillar.transform, "RimA", new Vector3(0f, 0.505f, 0.44f), new Vector3(0.98f, 0.01f, 0.08f), stripe);
+                Kit.Box(pillar.transform, "RimB", new Vector3(0f, 0.505f, -0.44f), new Vector3(0.98f, 0.01f, 0.08f), stripe);
+                Kit.Box(pillar.transform, "RimC", new Vector3(0.44f, 0.505f, 0f), new Vector3(0.08f, 0.01f, 0.98f), stripe);
+                Kit.Box(pillar.transform, "RimD", new Vector3(-0.44f, 0.505f, 0f), new Vector3(0.08f, 0.01f, 0.98f), stripe);
+                LowPoly.Make(LowPoly.Cylinder(10), "Piston", pillar.transform, new Vector3(0f, -4f, 0f), new Vector3(0.35f, 7f, 0.35f), Kit.Steel);
+                LowPoly.Make(LowPoly.Cylinder(10), "Sleeve", g, new Vector3(x, -10.5f, zs[i]), new Vector3(1.8f, 7f, 1.8f), Kit.SafetyYellow);
+                pillar.AddComponent<Rigidbody>();
+                var pp = pillar.AddComponent<PistonPillar>();
+                pp.baseY = -0.6f;
+                pp.amplitude = 1.3f;
+                pp.period = 3.4f;
+                pp.phase = i * 0.95f;
+            }
+            Floor(g, "Landing", 0f, 221.5f, 226f, 8f, 0f, floorDark);
+        }
+
+        /// <summary>Wind Tunnel: a narrow bridge, giant fans blowing you toward the edge in gusts, and two swinging plungers.</summary>
+        static void BuildWindTunnel(Transform g)
+        {
+            Floor(g, "WindBridge", 0f, 226f, 256f, 4.5f, 0f, floor);
+
+            var zone = new GameObject("Wind").transform;
+            zone.SetParent(g, false);
+            zone.localPosition = new Vector3(0f, 1.5f, 241f);
+            var wz = zone.gameObject.AddComponent<WindBlower>();
+            wz.size = new Vector3(5f, 4f, 30f);
+            wz.wind = new Vector3(4.5f, 0f, 0f);
+            wz.gustPeriod = 3.5f;
+
+            // Three giant fans on the left, blowing right
+            var fans = new List<Transform>();
+            var blade = Mats.Get("Fan_Blade", new Color(0.8f, 0.82f, 0.85f));
+            foreach (float z in new[] { 231f, 241f, 251f })
+            {
+                var housing = new GameObject("Fan").transform;
+                housing.SetParent(g, false);
+                housing.localPosition = new Vector3(-8f, 2.5f, z);
+                LowPoly.Make(LowPoly.Torus(20, 5, 0.12f), "Ring", housing, Vector3.zero, new Vector3(6f, 1.6f, 6f), Kit.SafetyYellow,
+                    new Vector3(0f, 0f, 90f));
+                Kit.IBeam(g, new Vector3(-8f, -14f, z), new Vector3(-8f, -0.5f, z), 0.7f, Kit.Girder);
+                var rotor = new GameObject("Rotor").transform;
+                rotor.SetParent(housing, false);
+                rotor.localRotation = Quaternion.Euler(0f, 0f, -90f); // local Y = wind direction (+X)
+                LowPoly.Make(LowPoly.Cylinder(10), "Hub", rotor, Vector3.zero, new Vector3(0.9f, 0.6f, 0.9f), Kit.Girder);
+                for (int b = 0; b < 4; b++)
+                    Kit.Box(rotor, "Blade", Quaternion.Euler(0f, b * 90f, 0f) * new Vector3(1.4f, 0f, 0f), new Vector3(2.4f, 0.06f, 0.8f), blade,
+                        new Vector3(20f, b * 90f, 0f));
+                fans.Add(rotor);
+            }
+            wz.fans = fans.ToArray();
+
+            // Swinging plungers (Lord Dookington's finest) on gantries
+            var wood = Mats.Get("Plunger_Wood", new Color(0.6f, 0.4f, 0.2f));
+            var rubber = Mats.Get("Plunger_Rubber", new Color(0.8f, 0.1f, 0.12f));
+            float[] pz = { 236f, 247f };
+            for (int i = 0; i < pz.Length; i++)
+            {
+                var wb = new GameObject("Plunger_" + (i + 1)).transform;
+                wb.SetParent(g, false);
+                wb.localPosition = new Vector3(0f, 0f, pz[i]);
+                Vector3 hang = Kit.Gantry(wb, Vector3.zero, 6f, 11f);
+                var pivot = new GameObject("Pivot").transform;
+                pivot.SetParent(wb, false);
+                pivot.localPosition = hang;
+                LowPoly.Make(LowPoly.Cylinder(8), "Handle", pivot, new Vector3(0f, -4.5f, 0f), new Vector3(0.5f, 9f, 0.5f), wood);
+                var head = new GameObject("Ball").transform;
+                head.SetParent(pivot, false);
+                head.localPosition = new Vector3(0f, -9.6f, 0f);
+                LowPoly.Make(LowPoly.Cone(12), "Cup", head, Vector3.zero, new Vector3(2.6f, 1.6f, 2.6f), rubber);
+                LowPoly.Make(LowPoly.Cylinder(12), "Rim", head, new Vector3(0f, -0.75f, 0f), new Vector3(2.7f, 0.15f, 2.7f), rubber);
+
+                var comp = wb.gameObject.AddComponent<WreckingBall>();
+                comp.pivot = pivot;
+                comp.ball = head;
+                comp.ballRadius = 1.4f;
+                comp.period = 2.3f;
+                comp.phase = 1f + i * 1.9f;
+                comp.knockback = 16f;
+            }
+
+            // CP5
+            Floor(g, "CP5_Pad", 0f, 256f, 262f, 10f, 0f, floorDark);
+            CheckpointGate(g, 4, new Vector3(0f, 0f, 259f), 10f);
+        }
+
+        static void BuildFinish(Transform g)
+        {
+            // Ramp from (z 154+F, y 0) up to (z 166+F, y 3)
             float rise = 3f, run = 12f;
             float angle = Mathf.Atan2(rise, run) * Mathf.Rad2Deg;
             float len = Mathf.Sqrt(rise * rise + run * run);
             float a = angle * Mathf.Deg2Rad;
-            Block(g, "Ramp", new Vector3(0f, 1.5f - 0.5f * Mathf.Cos(a), 160f + 0.5f * Mathf.Sin(a)), new Vector3(10f, 1f, len), floor, true, new Vector3(-angle, 0f, 0f));
+            var ramp = Block(g, "Ramp", new Vector3(0f, 1.5f - 0.5f * Mathf.Cos(a), 160f + F + 0.5f * Mathf.Sin(a)), new Vector3(10f, 1f, len), floor, true,
+                new Vector3(-angle, 0f, 0f));
+            for (int k = 0; k < 8; k++) // grip strips
+                Kit.Box(ramp.transform, "Grip", new Vector3(0f, 0.505f, -0.45f + k * 0.13f), new Vector3(0.96f, 0.01f, 0.03f), Kit.Seam);
 
-            // Finish platform (extends left so the shortcut ledge drops onto it)
-            Floor(g, "FinishPad", -2.5f, 166f, 182f, 19f, 3f, floorDark);
-            Block(g, "FinishBackWall", new Vector3(-2.5f, 5f, 182.5f), new Vector3(19f, 4f, 1f), metal);
-            Block(g, "FinishRailR", new Vector3(7.25f, 3.5f, 174f), new Vector3(0.5f, 1f, 16f), metal);
+            // Finish stage with a red carpet
+            Floor(g, "FinishPad", -2.5f, 166f + F, 182f + F, 19f, 3f, floorDark);
+            Kit.Box(g, "Carpet", new Vector3(0f, 3.012f, 176f + F), new Vector3(6f, 0.01f, 12f), Mats.Get("Carpet_Red", new Color(0.7f, 0.08f, 0.12f)));
+            Block(g, "FinishBackWall", new Vector3(-2.5f, 5f, 182.5f + F), new Vector3(19f, 4f, 1f), Kit.Girder);
+            Kit.Box(g, "FinishScreen", new Vector3(-2.5f, 5.2f, 181.98f + F), new Vector3(17.5f, 3.2f, 0.04f), Mats.Unlit("Start_Panel", new Color(0.18f, 0.12f, 0.35f)));
+            Props.Sign(g, "WINNERS GET PAID", new Vector3(-2.5f, 5.4f, 181.94f + F), 0.2f, Palette.Gold);
+            Kit.Railing(g, 7.15f, 166f + F, 182f + F, 3f);
 
             var line = new GameObject("FinishLine").transform;
             line.SetParent(g, false);
-            line.localPosition = new Vector3(-2.5f, 3.05f, 171f);
+            line.localPosition = new Vector3(-2.5f, 3.05f, 171f + F);
             var trigger = line.gameObject.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
             trigger.size = new Vector3(19f, 6f, 1.5f);
             trigger.center = new Vector3(0f, 3f, 0f);
             line.gameObject.AddComponent<FinishLine>();
 
-            Block(g, "ArchL", new Vector3(-12.2f, 6f, 171f), new Vector3(0.6f, 6f, 0.6f), gold);
-            Block(g, "ArchR", new Vector3(7.4f, 6f, 171f), new Vector3(0.6f, 6f, 0.6f), gold);
-            Block(g, "ArchTop", new Vector3(-2.4f, 9.2f, 171f), new Vector3(20.2f, 0.8f, 0.6f), gold, false);
             for (int i = 0; i < 19; i++)
-                Block(g, "Checker", new Vector3(-11.5f + i, 3.02f, 171f), new Vector3(1f, 0.04f, 1.2f), i % 2 == 0 ? black : white, false);
-            Sign(g, "FINISH", new Vector3(-2.5f, 11f, 170.6f), 0.45f, Palette.Gold);
+                Kit.Box(g, "Checker", new Vector3(-11.5f + i, 3.015f, 171f + F), new Vector3(1f, 0.01f, 1.2f), i % 2 == 0 ? black : white);
+            Kit.Arch(g, new Vector3(-2.5f, 3f, 171f + F), 19.6f, 6f, gold, new Color(1f, 0.85f, 0.4f));
+            Props.Sign(g, "FINISH", new Vector3(-2.5f, 9.6f, 170.55f + F), 0.3f, Palette.Gold);
 
-            // Lord Dookington III, the show's porta-potty mascot, watching from the finish.
-            Block(g, "LordDookington", new Vector3(4.5f, 4.4f, 179f), new Vector3(1.6f, 2.8f, 1.6f), potty);
-            Block(g, "LordDookington_Hat", new Vector3(4.5f, 6.2f, 179f), new Vector3(1f, 0.8f, 1f), black, false);
-            Block(g, "LordDookington_HatBrim", new Vector3(4.5f, 5.85f, 179f), new Vector3(1.6f, 0.1f, 1.6f), black, false);
-            Sign(g, "LORD DOOKINGTON III", new Vector3(4.5f, 7.2f, 178.1f), 0.08f, Color.white);
+            // Podium
+            float[] podium = { 1.2f, 0.8f, 0.5f };
+            float[] px = { -2.5f, -4.6f, -0.4f };
+            for (int i = 0; i < 3; i++)
+            {
+                Block(g, "Podium_" + (i + 1), new Vector3(px[i], 3f + podium[i] * 0.5f, 179.5f + F), new Vector3(2f, podium[i], 2f), white);
+                Props.Sign(g, (i + 1).ToString(), new Vector3(px[i], 3f + podium[i] * 0.5f, 178.48f + F), 0.12f, Palette.Gold);
+            }
+
+            BuildLordDookington(g, new Vector3(4.5f, 3f, 179f + F));
+        }
+
+        /// <summary>Lord Dookington III, the show's porta-potty mascot: top hat, monocle, a moon on the door.</summary>
+        static void BuildLordDookington(Transform g, Vector3 p)
+        {
+            var dark = Mats.Get("Potty_Dark", new Color(0.18f, 0.32f, 0.65f));
+            Block(g, "LordDookington", p + new Vector3(0f, 1.4f, 0f), new Vector3(1.6f, 2.8f, 1.6f), potty);
+            Kit.Box(g, "Roof", p + new Vector3(0f, 2.9f, 0f), new Vector3(1.75f, 0.2f, 1.75f), dark);
+            Kit.Box(g, "Door", p + new Vector3(0f, 1.3f, -0.81f), new Vector3(1.2f, 2.3f, 0.03f), dark);
+            Kit.Box(g, "Moon", p + new Vector3(0f, 2.15f, -0.83f), new Vector3(0.28f, 0.28f, 0.02f), gold, new Vector3(0f, 0f, 45f));
+            Kit.Box(g, "Handle", p + new Vector3(0.45f, 1.3f, -0.84f), new Vector3(0.06f, 0.25f, 0.04f), Kit.Steel);
+            LowPoly.Make(LowPoly.Cylinder(10), "HatBrim", g, p + new Vector3(0f, 3.05f, 0f), new Vector3(1.7f, 0.1f, 1.7f), black);
+            LowPoly.Make(LowPoly.Cylinder(10), "Hat", g, p + new Vector3(0f, 3.55f, 0f), new Vector3(1.05f, 1f, 1.05f), black);
+            LowPoly.Make(LowPoly.Cylinder(10), "HatBand", g, p + new Vector3(0f, 3.2f, 0f), new Vector3(1.08f, 0.2f, 1.08f), hazard);
+            LowPoly.Make(LowPoly.Torus(12, 4, 0.2f), "Monocle", g, p + new Vector3(-0.35f, 2.15f, -0.86f), new Vector3(0.4f, 0.4f, 0.4f),
+                gold, new Vector3(90f, 0f, 0f));
+            Props.Sign(g, "LORD DOOKINGTON III", p + new Vector3(0f, 4.4f, -0.1f), 0.08f, Color.white);
         }
 
         static void BuildScenery(Transform g)
         {
             // The junkyard pit under the course
-            Block(g, "ScrapPit", new Vector3(0f, -14f, 90f), new Vector3(220f, 1f, 280f), pit, false);
+            Block(g, "ScrapPit", new Vector3(0f, -14f, 150f), new Vector3(240f, 1f, 420f), pit, false);
             var rng = new System.Random(69);
             Color[] drumColors = { new Color(0.75f, 0.2f, 0.18f), new Color(0.2f, 0.45f, 0.75f), new Color(0.85f, 0.7f, 0.2f), new Color(0.3f, 0.55f, 0.3f) };
-            for (int i = 0; i < 55; i++)
+            for (int i = 0; i < 85; i++)
             {
                 float side = rng.NextDouble() < 0.5 ? -1f : 1f;
                 float x = side * (13f + (float)rng.NextDouble() * 16f);
-                float z = -20f + (float)rng.NextDouble() * 220f;
+                float z = -20f + (float)rng.NextDouble() * 320f;
                 var p = new Vector3(x, -13.5f, z);
                 switch (rng.Next(5))
                 {
@@ -296,30 +511,31 @@ namespace KnockbackRumble
                 }
             }
             // Car stacks: the "towers" of the junkyard
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 12; i++)
             {
                 float side = i % 2 == 0 ? -1f : 1f;
-                var p = new Vector3(side * (24f + (float)rng.NextDouble() * 4f), -13.5f, 10f + i * 22f);
-                for (int k = 0; k < 3 + rng.Next(3); k++)
+                var p = new Vector3(side * (24f + (float)rng.NextDouble() * 4f), -13.5f, 10f + i * 24f);
+                int count = 3 + rng.Next(3);
+                for (int k = 0; k < count; k++)
                     Props.CarWreck(g, p + Vector3.up * k * 1.9f, (float)rng.NextDouble() * 40f - 20f + (k % 2) * 90f,
                         drumColors[rng.Next(drumColors.Length)], 0f);
             }
 
             // The TV show: grandstands on both sides, light towers, a jumbotron past the finish
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
-                float z = 20f + i * 65f;
+                float z = 20f + i * 62f;
                 Props.Grandstand(g, new Vector3(-36f, -1f, z), 90f, 44f, 5, rng, 13f);
                 Props.Grandstand(g, new Vector3(36f, -1f, z), -90f, 44f, 5, rng, 13f);
             }
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 6; i++)
             {
-                float z = -5f + i * 60f;
+                float z = -5f + i * 58f;
                 Props.LightTower(g, new Vector3(-20f, -14f, z), 30f, new Vector3(0f, 0f, z + 10f));
                 Props.LightTower(g, new Vector3(20f, -14f, z), 30f, new Vector3(0f, 0f, z + 10f));
             }
-            Props.Jumbotron(g, new Vector3(-2.5f, 22f, 205f), 0f, "KNOCKBACK RUMBLE", "brought to you by SHART ENERGY");
-            Props.Backdrop(g, new Vector3(0f, 0f, 90f), 120f, 7, "SHART ENERGY");
+            Props.Jumbotron(g, new Vector3(-2.5f, 22f, 205f + F), 0f, "KNOCKBACK RUMBLE", "brought to you by SHART ENERGY");
+            Props.Backdrop(g, new Vector3(0f, 0f, 145f), 170f, 7, "SHART ENERGY");
         }
 
         // ---------- Kit pieces ----------
@@ -331,41 +547,28 @@ namespace KnockbackRumble
             return t;
         }
 
-        /// <summary>A 1m-thick slab whose top surface is at "top".</summary>
-        static GameObject Floor(Transform g, string name, float x, float z0, float z1, float width, float top, Material mat)
-        {
-            var go = Block(g, name, new Vector3(x, top - 0.5f, (z0 + z1) * 0.5f), new Vector3(width, 1f, z1 - z0), mat);
-            // Yellow/black edge trim so you can read where the drop is
-            float len = z1 - z0, zc = (z0 + z1) * 0.5f;
-            foreach (float side in new[] { -1f, 1f })
-            {
-                Block(g, name + "_Edge", new Vector3(x + side * (width * 0.5f + 0.03f), top - 0.3f, zc), new Vector3(0.06f, 0.6f, len), stripe, false);
-                int n = Mathf.Max(1, Mathf.FloorToInt(len / 1.2f));
-                for (int i = 0; i < n; i += 2)
-                    Block(g, name + "_EdgeBlack", new Vector3(x + side * (width * 0.5f + 0.05f), top - 0.3f, z0 + (i + 0.5f) * len / n),
-                        new Vector3(0.06f, 0.6f, len / n), black, false);
-            }
-            return go;
-        }
+        /// <summary>A steel deck whose top surface is at "top" (see Kit.Deck).</summary>
+        static GameObject Floor(Transform g, string name, float x, float z0, float z1, float width, float top, Material mat,
+            bool trim = true, bool girders = true) =>
+            Kit.Deck(g, name, x, z0, z1, width, top, mat, trim, girders);
 
         static void DressCrusher(Transform block)
         {
             // Children inherit the block's scale (6.5 x 2 x 4), so sizes here are fractions of it.
-            var yellow = stripe;
+            // Stripes are painted ON the front/back faces (flush), not sticking out.
             for (int k = 0; k < 10; k++)
             {
-                var m = k % 2 == 0 ? yellow : black;
-                foreach (float z in new[] { -0.505f, 0.505f })
-                    Shapes.Make(PrimitiveType.Cube, "Stripe", block, new Vector3(-0.45f + k * 0.1f, -0.38f, z), new Vector3(0.1f, 0.2f, 0.01f), m, false,
-                        new Vector3(0f, 0f, 25f));
+                var m = k % 2 == 0 ? stripe : black;
+                foreach (float z in new[] { -0.501f, 0.501f })
+                    Shapes.Make(PrimitiveType.Cube, "Stripe", block, new Vector3(-0.45f + k * 0.1f, -0.36f, z), new Vector3(0.1f, 0.22f, 0.002f), m, false);
             }
-            var steel = Mats.Get("Gun_Steel", new Color(0.55f, 0.57f, 0.62f));
+            // Press plate and teeth on the underside (inside the block's footprint)
+            Shapes.Make(PrimitiveType.Cube, "Plate", block, new Vector3(0f, -0.52f, 0f), new Vector3(0.96f, 0.04f, 0.94f), Kit.Girder, false);
             for (int k = 0; k < 6; k++)
-                LowPoly.Make(LowPoly.Cone(4), "Tooth", block, new Vector3(-0.42f + k * 0.168f, -0.58f, 0f), new Vector3(0.06f, 0.18f, 0.5f), steel,
+                LowPoly.Make(LowPoly.Cone(4), "Tooth", block, new Vector3(-0.4f + k * 0.16f, -0.6f, 0f), new Vector3(0.05f, 0.12f, 0.4f), Kit.Steel,
                     new Vector3(180f, 0f, 0f));
-            LowPoly.Make(LowPoly.Cylinder(8), "Piston", block, new Vector3(0f, 1.5f, 0f), new Vector3(0.09f, 2f, 0.14f), steel);
+            LowPoly.Make(LowPoly.Cylinder(8), "Piston", block, new Vector3(0f, 1.5f, 0f), new Vector3(0.09f, 2f, 0.14f), Kit.Steel);
         }
-
 
         /// <summary>A box positioned relative to its group (section groups sit at the course origin).</summary>
         static GameObject Block(Transform g, string name, Vector3 pos, Vector3 size, Material mat, bool collider = true,
@@ -383,14 +586,8 @@ namespace KnockbackRumble
             box.center = new Vector3(0f, 3f, 0f);
             cp.gameObject.AddComponent<Checkpoint>().index = index;
 
-            float half = width * 0.5f + 0.2f;
-            Block(g, "CP" + (index + 1) + "_PostL", pos + new Vector3(-half, 2f, 0f), new Vector3(0.4f, 4f, 0.4f), checkpointMat);
-            Block(g, "CP" + (index + 1) + "_PostR", pos + new Vector3(half, 2f, 0f), new Vector3(0.4f, 4f, 0.4f), checkpointMat);
-            Block(g, "CP" + (index + 1) + "_Top", pos + new Vector3(0f, 4.2f, 0f), new Vector3(width + 0.8f, 0.4f, 0.4f), checkpointMat, false);
-            var bulb = Mats.Unlit("CheckpointBulb", new Color(0.6f, 0.95f, 1f));
-            for (float x = -width * 0.5f; x <= width * 0.5f + 0.01f; x += 1.5f)
-                LowPoly.Make(LowPoly.Ico(0), "Bulb", g, pos + new Vector3(x, 4.45f, -0.22f), Vector3.one * 0.28f, bulb);
-            Props.Sign(g, "CHECKPOINT " + (index + 1), pos + new Vector3(0f, 5.2f, -0.25f), 0.12f, new Color(0.6f, 0.95f, 1f));
+            Kit.Arch(g, pos, width + 0.6f, 4.2f, checkpointMat, new Color(0.6f, 0.95f, 1f));
+            Props.Sign(g, "CHECKPOINT " + (index + 1), pos + new Vector3(0f, 4.8f, -0.45f), 0.12f, new Color(0.6f, 0.95f, 1f));
         }
 
         static void Pickup(Transform g, string id, Vector3 pos)
@@ -399,24 +596,6 @@ namespace KnockbackRumble
             go.transform.SetParent(g, false);
             go.transform.localPosition = pos;
             go.AddComponent<WeaponPickup>().Setup(id);
-        }
-
-        static void Sign(Transform g, string text, Vector3 pos, float size, Color color)
-        {
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (font == null) return;
-            var go = new GameObject("Sign_" + text);
-            go.transform.SetParent(g, false);
-            go.transform.localPosition = pos;
-            var tm = go.AddComponent<TextMesh>();
-            tm.font = font;
-            tm.text = text;
-            tm.fontSize = 64;
-            tm.characterSize = size;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.alignment = TextAlignment.Center;
-            tm.color = color;
-            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
         }
     }
 }

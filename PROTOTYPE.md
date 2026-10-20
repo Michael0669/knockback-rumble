@@ -4,8 +4,10 @@ A **show** of 3 events, played back to back. Everything you do earns or loses **
 after the last event wins the show. Playable **offline vs bots** or **online with friends** through Steam.
 Everything is greybox.
 
-1. **The Gauntlet**: the Scrap Sprint obstacle course. Finish payouts $500 / $350 / $250 / $150, then $100.
-   Ends when 5 of 8 finish or time runs out.
+1. **The Gauntlet**: the Scrap Sprint obstacle course: conveyor with bumpers, spiked wrecking balls, hover
+   platforms, crusher hall (container shortcut), spin bar, Punch Alley (boxing gloves), Piston Pit, Wind Tunnel
+   (fans + swinging plungers), finish stage. 5 checkpoints. Finish payouts $500 / $350 / $250 / $150, then $100.
+   Ends when 5 of 8 finish or after 3:20.
 2. **Cash Grab**: an open arena with 3 money bags. Hold one for $10 a second. Get hit and it pops loose.
 3. **Crumble Plaza**: the floor falls apart tile by tile. $5 a second while you're standing. Fall and you're out
    (you watch from the Losers' Lounge). Survivors get a bonus.
@@ -45,6 +47,13 @@ for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countd
 - **TESTING TOOLS → HOST DIRECT / JOIN DIRECT**: connect by IP address, for testing without Steam.
 
 Your level, XP and wallet show at the bottom right of the main menu.
+
+## Customize (outfits)
+
+**CUSTOMIZE** (main menu, lobby, pause menu) dresses your dummy: hat, mask, shirt, pants, shoes, gloves.
+One item per slot is free; the rest cost wallet cash (what you keep from shows). Everyone sees your outfit
+online, and bots wear random outfits. Items live in `Scripts/Cosmetics/Cosmetics.cs`: each one is a line in the
+list plus a small build function.
 
 ## Loadouts
 
@@ -143,7 +152,8 @@ Assets/KnockbackRumble/
   Art/Resources/SFX/ sound effects and music (WAV files saved as .bytes, made by Tools/make_sfx.py)
   Art/Resources/UI/  menu art (PNG files saved as .bytes) + fonts (made by Tools/make_ui_art.py; fonts are OFL / Apache licensed)
   Editor/            Knockback Rumble menu, voice generator, build step (writes steam_appid.txt next to builds)
-  Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual, Contestant
+  Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual (the dummy model + outfits), Contestant
+  Scripts/Cosmetics/ Cosmetics (outfit items), CustomizePreview (the spinning dummy on the CUSTOMIZE screen)
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera (with aim zoom)
   Scripts/Loadout/   Loadouts (perks, gadgets, streaks, unlock levels) and Profile (level, XP, wallet)
   Scripts/Weapons/   WeaponModels (gun, rocket, bomb, spike ball models), Puffs (low-poly smoke/fire/sparks/confetti),
@@ -155,7 +165,8 @@ Assets/KnockbackRumble/
   Scripts/Audio/     Sfx + SfxRunner (sound effects and music), VoiceLine, VoiceDirector (spoken lines, off for now)
   Scripts/Net/       NetSession (lobby, relay, clock), MatchController (race <-> network), SteamService,
                      SteamTransport, TcpTransport, RemoteDummy (smooths other players), NetVoice + VoicePlayer
-  Scripts/Level/     ScrapSprintBuilder (the Gauntlet), ArenaBuilder (Cash Grab, Crumble Plaza), CrumbleFloor, hazards,
+  Scripts/Level/     ScrapSprintBuilder (the Gauntlet), ArenaBuilder (Cash Grab, Crumble Plaza), Kit (decks, I-beams,
+                     gantries, railings, containers, arches), CrumbleFloor, hazards (incl. PunchGlove, PistonPillar, WindBlower),
                      Props (junk, grandstands + crowd, light towers, jumbotron, blimp, mountains, clouds)
   Scripts/Util/      Mats (materials), LowPoly (faceted procedural meshes, saved to Meshes/ in edit mode)
 ```

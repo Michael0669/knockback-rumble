@@ -177,6 +177,9 @@ namespace KnockbackRumble
             public int showsWon;
             // Loadout stored as plain numbers (safest for Unity's JSON).
             public int primary = 2, gadget = 1, perk1 = 1, perk2 = 2, streak1 = 1, streak2 = 0;
+            // Cosmetics: owned items as slot * 256 + id, and the equipped id per slot.
+            public List<int> owned = new List<int>();
+            public int[] outfit = new int[Outfit.SlotCount];
         }
 
         static Data data;
@@ -206,6 +209,8 @@ namespace KnockbackRumble
                 data = new Data();
             }
             data.level = Mathf.Clamp(data.level, 1, Loadouts.MaxLevel);
+            if (data.owned == null) data.owned = new List<int>();
+            if (data.outfit == null || data.outfit.Length != Outfit.SlotCount) data.outfit = new int[Outfit.SlotCount];
             loadout = new Loadout
             {
                 primary = (byte)data.primary, gadget = (Gadget)data.gadget, perk1 = (Perk)data.perk1,
@@ -261,6 +266,46 @@ namespace KnockbackRumble
         }
 
         public static int LastXpGained { get; private set; }
+
+        // ---------- Cosmetics ----------
+
+        static int Key(CosmeticItem i) => (int)i.slot * 256 + i.id;
+
+        public static bool Owns(CosmeticItem i) => i == null || i.price <= 0 || D.owned.Contains(Key(i));
+
+        /// <summary>Buy an item with wallet cash. False if you can't afford it.</summary>
+        public static bool Buy(CosmeticItem i)
+        {
+            if (i == null || Owns(i)) return true;
+            var d = D;
+            if (d.wallet < i.price) return false;
+            d.wallet -= i.price;
+            d.owned.Add(Key(i));
+            Save();
+            return true;
+        }
+
+        public static Outfit Outfit
+        {
+            get
+            {
+                var d = D;
+                var o = new Outfit();
+                for (int s = 0; s < Outfit.SlotCount; s++)
+                {
+                    var item = Cosmetics.Find((CosmeticSlot)s, (byte)Mathf.Clamp(d.outfit[s], 0, 255));
+                    o.ids[s] = item != null && Owns(item) ? item.id : (byte)0;
+                }
+                return o;
+            }
+        }
+
+        public static void SetOutfit(Outfit o)
+        {
+            var d = D;
+            for (int s = 0; s < Outfit.SlotCount; s++) d.outfit[s] = o.ids[s];
+            Save();
+        }
 
         /// <summary>Everything unlocked at exactly this level (for the level-up screen).</summary>
         public static List<string> UnlocksAt(int level)

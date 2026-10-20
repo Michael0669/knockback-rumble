@@ -237,7 +237,8 @@ namespace KnockbackRumble
                 Color color = e.bot ? persona.Color : HumanColors[e.style % HumanColors.Length];
                 bool isPlayer = !e.bot && local;
 
-                var c = Contestant.Create(e.name, color, isPlayer, persona, race.SpawnPointFor(eventCourse, i), Quaternion.identity,
+                Vector3 spawn = race.SpawnPointFor(eventCourse, i);
+                var c = Contestant.Create(e.name, color, isPlayer, persona, spawn, race.SpawnFacing(eventCourse, spawn),
                     e.netId, e.owner, local, !e.bot);
 
                 if (isPlayer)
@@ -253,11 +254,16 @@ namespace KnockbackRumble
                 if (local)
                 {
                     c.ApplyLoadout(isPlayer ? Profile.Loadout : Loadouts.RandomForBot(new System.Random(seed + e.netId * 7919)));
+                    // Outfits: yours from the CUSTOMIZE screen; each bot always wears the same thing.
+                    c.Visual.ApplyOutfit(isPlayer ? Profile.Outfit : Cosmetics.RandomOutfit(new System.Random(e.style * 977 + 13)));
                     if (Net.Online)
                     {
                         var w = writer.Begin(MsgType.Loadout).Byte(c.NetId);
                         c.Loadout.Write(w);
                         Net.Session.Send(w);
+                        var wo = writer.Begin(MsgType.Outfit).Byte(c.NetId);
+                        c.Visual.CurrentOutfit.Write(wo);
+                        Net.Session.Send(wo);
                     }
                 }
 
@@ -662,6 +668,14 @@ namespace KnockbackRumble
                         delays.Add(r.Float());
                     }
                     Gadgets.OnRemoteStreak(c, streak, targets, delays);
+                    break;
+                }
+
+                case MsgType.Outfit:
+                {
+                    var c = Find(r.Byte());
+                    var outfit = Outfit.Read(r);
+                    if (c != null && !c.IsLocal) c.Visual.ApplyOutfit(outfit);
                     break;
                 }
 

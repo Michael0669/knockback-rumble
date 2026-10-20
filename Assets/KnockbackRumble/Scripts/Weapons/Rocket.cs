@@ -62,9 +62,9 @@ namespace KnockbackRumble
             trailTimer -= dt;
             while (trailTimer <= 0f)
             {
-                trailTimer += 0.015f;
+                trailTimer += 0.025f;
                 Puffs.Smoke(tail - dir * Random.Range(0f, 0.4f), Random.insideUnitSphere * 0.4f + Vector3.up * 0.3f,
-                    Random.Range(0.3f, 0.5f), Random.Range(0.8f, 1.3f));
+                    Random.Range(0.25f, 0.4f), Random.Range(0.3f, 0.5f));
             }
         }
 

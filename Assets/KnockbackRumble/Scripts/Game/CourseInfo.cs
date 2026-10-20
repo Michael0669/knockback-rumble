@@ -80,7 +80,7 @@ namespace KnockbackRumble
             {
                 case EventKind.CashGrab: return 100f;
                 case EventKind.Crumble: return 110f;
-                default: return 150f;
+                default: return 200f;
             }
         }
     }

@@ -45,17 +45,35 @@ namespace KnockbackRumble
             info.center = CashGrabOrigin;
             info.radius = 20f;
 
-            // Main floor: 40 x 40, no rails. The edge is the point.
+            // Main floor: 40 x 40 of checkered marble, no rails. The edge is the point.
             Block(root, "Floor", new Vector3(0f, -0.5f, 0f), new Vector3(40f, 1f, 40f), floor);
+            var marbleA = Mats.Get("Marble_White", new Color(0.86f, 0.84f, 0.8f));
+            var marbleB = Mats.Get("Marble_Green", new Color(0.18f, 0.38f, 0.3f));
+            for (int tx = 0; tx < 10; tx++)
+                for (int tz = 0; tz < 10; tz++)
+                    Block(root, "Tile", new Vector3(-18f + tx * 4f, 0.004f, -18f + tz * 4f), new Vector3(3.96f, 0.01f, 3.96f),
+                        (tx + tz) % 2 == 0 ? marbleA : marbleB, false);
+            Block(root, "FloorLip", new Vector3(0f, -0.12f, 0f), new Vector3(40.04f, 0.2f, 40.04f), gold, false);
+            for (int i = 0; i < 4; i++)
+                Kit.IBeam(root, Quaternion.Euler(0f, i * 90f, 0f) * new Vector3(-19f, -1.5f, -19f),
+                    Quaternion.Euler(0f, i * 90f, 0f) * new Vector3(19f, -1.5f, -19f), 1f, Kit.Girder);
             // Hazard striping around the rim
-            Block(root, "EdgeN", new Vector3(0f, 0.01f, 19.6f), new Vector3(40f, 0.04f, 0.8f), stripe, false);
-            Block(root, "EdgeS", new Vector3(0f, 0.01f, -19.6f), new Vector3(40f, 0.04f, 0.8f), stripe, false);
-            Block(root, "EdgeE", new Vector3(19.6f, 0.01f, 0f), new Vector3(0.8f, 0.04f, 40f), stripe, false);
-            Block(root, "EdgeW", new Vector3(-19.6f, 0.01f, 0f), new Vector3(0.8f, 0.04f, 40f), stripe, false);
+            Block(root, "EdgeN", new Vector3(0f, 0.012f, 19.6f), new Vector3(40f, 0.01f, 0.8f), stripe, false);
+            Block(root, "EdgeS", new Vector3(0f, 0.012f, -19.6f), new Vector3(40f, 0.01f, 0.8f), stripe, false);
+            Block(root, "EdgeE", new Vector3(19.6f, 0.012f, 0f), new Vector3(0.8f, 0.01f, 40f), stripe, false);
+            Block(root, "EdgeW", new Vector3(-19.6f, 0.012f, 0f), new Vector3(0.8f, 0.01f, 40f), stripe, false);
 
             // Money dais in the middle with a ramp on each side
-            Block(root, "Dais", new Vector3(0f, 0.75f, 0f), new Vector3(10f, 1.5f, 10f), floorDark);
-            Block(root, "DaisTrim", new Vector3(0f, 1.52f, 0f), new Vector3(10.2f, 0.06f, 10.2f), gold, false);
+            Block(root, "Dais", new Vector3(0f, 0.75f, 0f), new Vector3(10f, 1.5f, 10f), Mats.Get("Vault_Steel", new Color(0.45f, 0.48f, 0.52f)));
+            Block(root, "DaisTop", new Vector3(0f, 1.505f, 0f), new Vector3(9.2f, 0.01f, 9.2f), Mats.Get("Carpet_Red", new Color(0.7f, 0.08f, 0.12f)), false);
+            Block(root, "DaisTrim", new Vector3(0f, 1.45f, 0f), new Vector3(10.1f, 0.12f, 10.1f), gold, false);
+            for (int i = 0; i < 4; i++)
+            {
+                var rot = Quaternion.Euler(0f, i * 90f, 0f);
+                // Rivets along each side
+                for (int k = -4; k <= 4; k++)
+                    LowPoly.Make(LowPoly.Ico(0), "Rivet", root, rot * new Vector3(k * 1.05f, 0.75f, 5.02f), Vector3.one * 0.18f, gold);
+            }
             for (int i = 0; i < 4; i++)
             {
                 float yaw = i * 90f;
@@ -74,13 +92,31 @@ namespace KnockbackRumble
             for (int i = 0; i < walls.Length; i++)
             {
                 bool alongX = i >= 2;
-                Block(root, "CoverWall_" + i, walls[i] + Vector3.up, alongX ? new Vector3(6f, 2f, 1f) : new Vector3(1f, 2f, 6f), metal);
+                // Cover is a giant stack of cash: green bricks with paper bands
+                var wall = Block(root, "CoverWall_" + i, walls[i] + Vector3.up, alongX ? new Vector3(6f, 2f, 1f) : new Vector3(1f, 2f, 6f), cashGreen);
+                for (int k = -1; k <= 1; k++)
+                    Shapes.Make(PrimitiveType.Cube, "Band", wall.transform, alongX ? new Vector3(k * 0.33f, 0f, 0f) : new Vector3(0f, 0f, k * 0.33f),
+                        alongX ? new Vector3(0.06f, 1.01f, 1.04f) : new Vector3(1.04f, 1.01f, 0.06f), Mats.Get("Cash_Band", new Color(0.95f, 0.92f, 0.8f)), false);
+                for (int k = 0; k < 3; k++)
+                    Shapes.Make(PrimitiveType.Cube, "Layer", wall.transform, new Vector3(0f, -0.33f + k * 0.33f, 0f), new Vector3(1.01f, 0.015f, 1.01f),
+                        Mats.Get("Cash_Dark", new Color(0.22f, 0.45f, 0.25f)), false);
+                Props.Sign(wall.transform, "$", alongX ? new Vector3(0.5f, 0f, -0.52f) : new Vector3(-0.52f, 0f, 0.5f), 0.12f, new Color(0.9f, 0.95f, 0.8f));
             }
             Vector3[] pillars = { new Vector3(13f, 0f, 13f), new Vector3(-13f, 0f, 13f), new Vector3(13f, 0f, -13f), new Vector3(-13f, 0f, -13f) };
             foreach (var p in pillars)
             {
-                Block(root, "Pillar", p + Vector3.up * 3f, new Vector3(2.2f, 6f, 2.2f), metal);
-                Block(root, "PillarCap", p + Vector3.up * 6.1f, new Vector3(2.6f, 0.3f, 2.6f), gold, false);
+                // Marble columns with gold caps (an invisible box keeps the collision simple)
+                var col = Block(root, "Pillar", p + Vector3.up * 3f, new Vector3(2.2f, 6f, 2.2f), metal);
+                col.GetComponent<Renderer>().enabled = false;
+                LowPoly.Make(LowPoly.Cylinder(12), "Column", root, p + Vector3.up * 3f, new Vector3(2.1f, 5.4f, 2.1f), marbleA);
+                LowPoly.Make(LowPoly.Cylinder(12), "Base", root, p + Vector3.up * 0.25f, new Vector3(2.7f, 0.5f, 2.7f), gold);
+                LowPoly.Make(LowPoly.Cylinder(12), "Capital", root, p + Vector3.up * 5.9f, new Vector3(2.7f, 0.5f, 2.7f), gold);
+                for (int k = 0; k < 12; k++)
+                {
+                    float fa = k * 30f * Mathf.Deg2Rad;
+                    Block(root, "Flute", p + new Vector3(Mathf.Cos(fa) * 1.02f, 3f, Mathf.Sin(fa) * 1.02f), new Vector3(0.12f, 5f, 0.12f), marbleB, false,
+                        new Vector3(0f, -k * 30f, 0f));
+                }
             }
 
             // Bumpers between the pillars and the edge
@@ -248,25 +284,37 @@ namespace KnockbackRumble
                 float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
                 float dist = 26f + (float)rng.NextDouble() * 26f;
                 float h = 3f + (float)rng.NextDouble() * 10f;
-                Block(root, "Pipe", new Vector3(Mathf.Sin(ang) * dist, -13.5f + h * 0.5f, Mathf.Cos(ang) * dist),
-                    new Vector3(2f, h, 2f), i % 2 == 0 ? rust : metal, false, new Vector3(0f, (float)rng.NextDouble() * 90f, 0f));
+                var pp = new Vector3(Mathf.Sin(ang) * dist, -13.5f + h * 0.5f, Mathf.Cos(ang) * dist);
+                LowPoly.Make(LowPoly.Cylinder(10), "Pipe", root, pp, new Vector3(2f, h, 2f), i % 2 == 0 ? rust : metal);
+                LowPoly.Make(LowPoly.Cylinder(10), "PipeCap", root, pp + Vector3.up * h * 0.5f, new Vector3(2.4f, 0.4f, 2.4f), Kit.Girder);
+                if (i % 3 == 0) Props.Drum(root, pp + Vector3.up * (h * 0.5f + 0.2f), new Color(0.35f, 0.42f, 0.18f));
             }
 
             // The Losers' Lounge: a fenced balcony overlooking the plaza.
             Vector3 lounge = new Vector3(0f, 8f, half + 9f);
             Block(root, "Lounge_Floor", lounge + Vector3.down * 0.5f, new Vector3(18f, 1f, 8f), metal);
-            Block(root, "Lounge_RailFront", lounge + new Vector3(0f, 0.6f, -4.2f), new Vector3(18f, 1.2f, 0.4f), gold);
-            Block(root, "Lounge_RailBack", lounge + new Vector3(0f, 1.5f, 4.2f), new Vector3(18f, 3f, 0.4f), metal);
-            Block(root, "Lounge_RailL", lounge + new Vector3(-9.2f, 1.5f, 0f), new Vector3(0.4f, 3f, 8.8f), metal);
-            Block(root, "Lounge_RailR", lounge + new Vector3(9.2f, 1.5f, 0f), new Vector3(0.4f, 3f, 8.8f), metal);
+            Block(root, "Lounge_Carpet", lounge + new Vector3(0f, 0.006f, 0f), new Vector3(17f, 0.01f, 7f), Mats.Get("Lounge_Carpet", new Color(0.35f, 0.15f, 0.4f)), false);
+            Kit.RailingAlong(root, lounge + new Vector3(-9f, 0f, -4f), lounge + new Vector3(9f, 0f, -4f));
+            Kit.RailingAlong(root, lounge + new Vector3(-9f, 0f, -4f), lounge + new Vector3(-9f, 0f, 4f));
+            Kit.RailingAlong(root, lounge + new Vector3(9f, 0f, -4f), lounge + new Vector3(9f, 0f, 4f));
+            Block(root, "Lounge_RailBack", lounge + new Vector3(0f, 1.5f, 4.2f), new Vector3(18f, 3f, 0.4f), Mats.Get("Lounge_Wall", new Color(0.25f, 0.2f, 0.3f)));
+            Block(root, "Lounge_Neon", lounge + new Vector3(0f, 2.4f, 3.98f), new Vector3(9f, 1.2f, 0.04f), Mats.Unlit("Lounge_Neon", new Color(0.12f, 0.08f, 0.2f)), false);
             for (int i = 0; i < 3; i++)
             {
                 Vector3 c = lounge + new Vector3(-6f + i * 6f, 0f, 2.6f);
                 Block(root, "Couch_Seat", c + Vector3.up * 0.3f, new Vector3(3.4f, 0.6f, 1.4f), couch);
                 Block(root, "Couch_Back", c + new Vector3(0f, 0.9f, 0.6f), new Vector3(3.4f, 1.2f, 0.4f), couch);
+                Block(root, "Couch_ArmL", c + new Vector3(-1.6f, 0.65f, 0f), new Vector3(0.3f, 0.7f, 1.4f), couch, false);
+                Block(root, "Couch_ArmR", c + new Vector3(1.6f, 0.65f, 0f), new Vector3(0.3f, 0.7f, 1.4f), couch, false);
+                for (int k = 0; k < 2; k++)
+                    Block(root, "Cushion", c + new Vector3(-0.75f + k * 1.5f, 0.66f, -0.05f), new Vector3(1.4f, 0.14f, 1.2f),
+                        Mats.Get("Couch_Cushion", new Color(0.65f, 0.35f, 0.55f)), false);
             }
             Block(root, "SnackTable", lounge + new Vector3(0f, 0.4f, -1f), new Vector3(2f, 0.8f, 1f), white);
-            Block(root, "Lounge_Pole", new Vector3(0f, -3f, half + 9f), new Vector3(1.2f, 11f, 1.2f), rust, false);
+            LowPoly.Make(LowPoly.Cylinder(10), "SadSnacks", root, lounge + new Vector3(0f, 0.9f, -1f), new Vector3(0.8f, 0.2f, 0.8f),
+                Mats.Get("Snack_Bowl", new Color(0.9f, 0.5f, 0.2f)));
+            Kit.IBeam(root, new Vector3(-6f, -14f, half + 9f), new Vector3(-6f, 7f, half + 9f), 1f, Kit.Girder);
+            Kit.IBeam(root, new Vector3(6f, -14f, half + 9f), new Vector3(6f, 7f, half + 9f), 1f, Kit.Girder);
             info.loungePoint = CrumbleOrigin + lounge + new Vector3(0f, 0.1f, -0.5f);
             Sign(root, "LOSERS' LOUNGE", lounge + new Vector3(0f, 2.4f, 3.9f), 0.25f, Palette.Gold);
             Sign(root, "complimentary sad snacks", lounge + new Vector3(0f, 1.6f, 3.9f), 0.1f, Color.white);

@@ -24,8 +24,8 @@ namespace KnockbackRumble
                 Vector3 v = Random.insideUnitSphere * radius * 2.6f + Vector3.up * radius * 0.6f;
                 Puffs.Fire(pos + Random.insideUnitSphere * radius * 0.25f, v, radius * Random.Range(0.35f, 0.65f), Random.Range(0.35f, 0.65f));
             }
-            Puffs.SmokeBurst(pos + Vector3.up * 0.3f, 10, radius * 1.1f, radius * 0.55f, 1.6f, true);
-            Puffs.SmokeBurst(pos, 5, radius * 0.8f, radius * 0.45f, 1.1f);
+            Puffs.SmokeBurst(pos + Vector3.up * 0.3f, 8, radius * 1.1f, radius * 0.5f, 0.85f, true);
+            Puffs.SmokeBurst(pos, 4, radius * 0.8f, radius * 0.4f, 0.55f);
             for (int i = 0; i < 14; i++)
             {
                 Vector3 v = Random.onUnitSphere * radius * Random.Range(3f, 6f);
@@ -46,7 +46,7 @@ namespace KnockbackRumble
         {
             for (int i = 0; i < 5; i++)
                 Puffs.Fire(pos + dir * size * 0.3f * i, dir * Random.Range(2f, 6f) + Random.insideUnitSphere, size * Random.Range(0.5f, 0.9f), 0.08f);
-            Puffs.Smoke(pos + dir * 0.2f, dir * 1.5f + Vector3.up * 0.5f, size * 0.8f, 0.6f);
+            Puffs.Smoke(pos + dir * 0.2f, dir * 1.5f + Vector3.up * 0.5f, size * 0.6f, 0.25f);
             FlashLight.Spawn(pos, Color.Lerp(color, new Color(1f, 0.8f, 0.4f), 0.6f), 6f * size + 3f, 3f, 0.08f);
         }
 
@@ -85,7 +85,7 @@ namespace KnockbackRumble
         {
             for (int i = 0; i < 4; i++)
                 Puffs.Spark(pos, Random.onUnitSphere * 4f + Vector3.up * 2f, size * 0.25f, Random.Range(0.2f, 0.4f), color);
-            Puffs.Smoke(pos, Random.insideUnitSphere * 0.5f + Vector3.up * 0.4f, size * 0.7f, 0.5f);
+            Puffs.Smoke(pos, Random.insideUnitSphere * 0.5f + Vector3.up * 0.4f, size * 0.5f, 0.25f);
         }
 
         static void Spawn(Mesh mesh, Vector3 pos, float from, float to, float life, Material mat)

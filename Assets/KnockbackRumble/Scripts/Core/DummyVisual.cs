@@ -3,7 +3,7 @@ using UnityEngine;
 namespace KnockbackRumble
 {
     /// <summary>
-    /// Greybox crash-test dummy built from primitives, with procedural animation:
+    /// The low-poly crash-test dummy, with procedural animation:
     /// leg/arm swing while running, a belly-flop pose while diving, and a full
     /// ragdoll-style tumble plus launch trail while stunned. Visual only; physics
     /// stays on the capsule.
@@ -24,34 +24,69 @@ namespace KnockbackRumble
         bool IsPlayer => contestant != null && contestant.IsPlayer;
         Contestant contestant;
 
+        /// <summary>The bones outfits attach to.</summary>
+        public DummyRig Rig { get; private set; }
+        readonly System.Collections.Generic.List<GameObject> outfitParts = new System.Collections.Generic.List<GameObject>();
+        public Outfit CurrentOutfit { get; private set; } = new Outfit();
+
+        /// <summary>
+        /// Builds the crash-test dummy: rounded low-poly body, googly eyes, crash-test target decals,
+        /// black joint rings, two-part arms and legs with hands and feet. Bones (pivots) are the same
+        /// ones the animation drives: model, armL/R (shoulders), legL/R (hips).
+        /// </summary>
         public void Build(Color bodyColor)
         {
             motor = GetComponent<DummyMotor>();
             var body = Mats.Get("Dummy_" + ColorUtility.ToHtmlStringRGB(bodyColor), bodyColor);
+            var shade = Mats.Get("Dummy_Shade_" + ColorUtility.ToHtmlStringRGB(bodyColor), bodyColor * 0.72f);
             var yellow = Mats.Get("Dummy_Yellow", Palette.DummyYellow);
             var black = Mats.Get("Dummy_Black", Palette.Black);
+            var eyeWhite = Mats.Get("Dummy_EyeWhite", new Color(0.97f, 0.97f, 0.95f));
 
             model = new GameObject("Model").transform;
             model.SetParent(transform, false);
             model.localPosition = new Vector3(0f, 0.9f, 0f); // pivot at the body's center so tumbles look right
 
-            Shapes.Make(PrimitiveType.Capsule, "Torso", model, new Vector3(0f, 0.15f, 0f), new Vector3(0.75f, 0.5f, 0.5f), body, false);
-            Shapes.Make(PrimitiveType.Sphere, "Head", model, new Vector3(0f, 0.75f, 0f), new Vector3(0.5f, 0.5f, 0.5f), body, false);
-            Shapes.Make(PrimitiveType.Cube, "Visor", model, new Vector3(0f, 0.78f, 0.2f), new Vector3(0.36f, 0.08f, 0.14f), black, false);
-            // Crash-test target decals on the sides of the head and chest
-            Shapes.Make(PrimitiveType.Cylinder, "TargetL", model, new Vector3(-0.245f, 0.75f, 0f), new Vector3(0.22f, 0.01f, 0.22f), yellow, false, new Vector3(0f, 0f, 90f));
-            Shapes.Make(PrimitiveType.Cylinder, "TargetR", model, new Vector3(0.245f, 0.75f, 0f), new Vector3(0.22f, 0.01f, 0.22f), yellow, false, new Vector3(0f, 0f, 90f));
-            Shapes.Make(PrimitiveType.Cylinder, "TargetChest", model, new Vector3(0f, 0.3f, 0.25f), new Vector3(0.24f, 0.01f, 0.24f), yellow, false, new Vector3(90f, 0f, 0f));
+            // Torso: chest, belly, pelvis
+            LowPoly.Make(LowPoly.Ico(1), "Chest", model, new Vector3(0f, DummyRig.ChestY, 0f), new Vector3(0.6f, 0.55f, 0.4f), body);
+            LowPoly.Make(LowPoly.Ico(1), "Belly", model, new Vector3(0f, DummyRig.BellyY, 0f), new Vector3(0.5f, 0.35f, 0.34f), body);
+            Shapes.Make(PrimitiveType.Cube, "Pelvis", model, new Vector3(0f, DummyRig.PelvisY, 0f), new Vector3(0.42f, 0.2f, 0.26f), shade, false);
+            LowPoly.Make(LowPoly.Torus(12, 4, 0.2f), "Waist", model, new Vector3(0f, -0.02f, 0f), new Vector3(0.48f, 0.12f, 0.34f), black);
+            // Chest target decal
+            LowPoly.Make(LowPoly.Cylinder(12), "TargetChest", model, new Vector3(0f, 0.32f, 0.205f), new Vector3(0.2f, 0.01f, 0.2f), yellow, new Vector3(90f, 0f, 0f));
+            Shapes.Make(PrimitiveType.Cube, "TargetChestH", model, new Vector3(0f, 0.32f, 0.212f), new Vector3(0.2f, 0.02f, 0.01f), black, false);
+            Shapes.Make(PrimitiveType.Cube, "TargetChestV", model, new Vector3(0f, 0.32f, 0.212f), new Vector3(0.02f, 0.2f, 0.01f), black, false);
 
-            legL = Limb("LegL", new Vector3(-0.18f, -0.2f, 0f), new Vector3(0.24f, 0.35f, 0.24f), -0.35f, body);
-            legR = Limb("LegR", new Vector3(0.18f, -0.2f, 0f), new Vector3(0.24f, 0.35f, 0.24f), -0.35f, body);
-            armL = Limb("ArmL", new Vector3(-0.45f, 0.38f, 0f), new Vector3(0.18f, 0.3f, 0.18f), -0.3f, body);
-            armR = Limb("ArmR", new Vector3(0.45f, 0.38f, 0f), new Vector3(0.18f, 0.3f, 0.18f), -0.3f, body);
+            // Neck and head
+            LowPoly.Make(LowPoly.Cylinder(8), "Neck", model, new Vector3(0f, 0.56f, 0f), new Vector3(0.14f, 0.12f, 0.14f), black);
+            var head = new GameObject("Head").transform;
+            head.SetParent(model, false);
+            head.localPosition = new Vector3(0f, DummyRig.HeadY, 0f);
+            LowPoly.Make(LowPoly.Ico(1), "Skull", head, Vector3.zero, new Vector3(0.44f, 0.48f, 0.44f), body);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                LowPoly.Make(LowPoly.Cylinder(12), "Target", head, new Vector3(side * 0.224f, 0.02f, 0f), new Vector3(0.18f, 0.01f, 0.18f), yellow,
+                    new Vector3(0f, 0f, 90f));
+                Shapes.Make(PrimitiveType.Cube, "TargetH", head, new Vector3(side * 0.23f, 0.02f, 0f), new Vector3(0.01f, 0.02f, 0.18f), black, false);
+                Shapes.Make(PrimitiveType.Cube, "TargetV", head, new Vector3(side * 0.23f, 0.02f, 0f), new Vector3(0.01f, 0.18f, 0.02f), black, false);
+                // Googly eyes
+                LowPoly.Make(LowPoly.Ico(1), "Eye", head, new Vector3(side * 0.085f, 0.06f, 0.18f), new Vector3(0.11f, 0.12f, 0.08f), eyeWhite);
+                LowPoly.Make(LowPoly.Ico(0), "Pupil", head, new Vector3(side * 0.08f, 0.055f, 0.215f), new Vector3(0.05f, 0.05f, 0.03f), black);
+            }
+            Shapes.Make(PrimitiveType.Cube, "Mouth", head, new Vector3(0f, -0.09f, 0.205f), new Vector3(0.1f, 0.02f, 0.02f), black, false);
+
+            // Arms (shoulder pivots) and legs (hip pivots)
+            armL = Arm("ArmL", -1f, body, shade, black);
+            armR = Arm("ArmR", 1f, body, shade, black);
+            legL = Leg("LegL", -1f, body, shade, black);
+            legR = Leg("LegR", 1f, body, shade, black);
+
+            Rig = new DummyRig { model = model, head = head, armL = armL, armR = armR, legL = legL, legR = legR, body = body };
 
             // The hand: weapon models are built pointing along +Z, so this turns them to point down the arm.
             hand = new GameObject("Hand").transform;
             hand.SetParent(armR, false);
-            hand.localPosition = new Vector3(0f, -0.6f, 0f);
+            hand.localPosition = new Vector3(0f, DummyRig.HandY, 0f);
             hand.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
             trail = gameObject.AddComponent<TrailRenderer>();
@@ -68,13 +103,43 @@ namespace KnockbackRumble
             trail.emitting = false;
         }
 
-        Transform Limb(string name, Vector3 pivotPos, Vector3 scale, float drop, Material mat)
+        Transform Arm(string name, float side, Material body, Material shade, Material black)
         {
             var pivot = new GameObject(name).transform;
             pivot.SetParent(model, false);
-            pivot.localPosition = pivotPos;
-            Shapes.Make(PrimitiveType.Capsule, name + "Mesh", pivot, new Vector3(0f, drop, 0f), scale, mat, false);
+            pivot.localPosition = new Vector3(side * 0.36f, 0.42f, 0f);
+            LowPoly.Make(LowPoly.Ico(1), "Shoulder", pivot, Vector3.zero, Vector3.one * 0.18f, black);
+            Shapes.Make(PrimitiveType.Capsule, "UpperArm", pivot, new Vector3(0f, DummyRig.UpperArmY, 0f), new Vector3(0.14f, 0.15f, 0.14f), body, false);
+            LowPoly.Make(LowPoly.Torus(10, 4, 0.3f), "Elbow", pivot, new Vector3(0f, -0.3f, 0f), new Vector3(0.15f, 0.08f, 0.15f), black);
+            Shapes.Make(PrimitiveType.Capsule, "Forearm", pivot, new Vector3(0f, DummyRig.ForearmY, 0f), new Vector3(0.12f, 0.13f, 0.12f), shade, false);
+            LowPoly.Make(LowPoly.Ico(1), "Hand", pivot, new Vector3(0f, DummyRig.HandY, 0f), new Vector3(0.15f, 0.16f, 0.13f), body);
             return pivot;
+        }
+
+        Transform Leg(string name, float side, Material body, Material shade, Material black)
+        {
+            var pivot = new GameObject(name).transform;
+            pivot.SetParent(model, false);
+            pivot.localPosition = new Vector3(side * 0.13f, -0.18f, 0f);
+            Shapes.Make(PrimitiveType.Capsule, "Thigh", pivot, new Vector3(0f, DummyRig.ThighY, 0f), new Vector3(0.18f, 0.17f, 0.18f), body, false);
+            LowPoly.Make(LowPoly.Torus(10, 4, 0.3f), "Knee", pivot, new Vector3(0f, -0.36f, 0f), new Vector3(0.18f, 0.08f, 0.18f), black);
+            Shapes.Make(PrimitiveType.Capsule, "Shin", pivot, new Vector3(0f, DummyRig.ShinY, 0f), new Vector3(0.15f, 0.15f, 0.15f), shade, false);
+            Shapes.Make(PrimitiveType.Cube, "Foot", pivot, new Vector3(0f, DummyRig.FootY, 0.05f), new Vector3(0.16f, 0.1f, 0.28f), black, false);
+            return pivot;
+        }
+
+        /// <summary>Dress the dummy (hat, mask, shirt, pants, shoes, gloves). Replaces the previous outfit.</summary>
+        public void ApplyOutfit(Outfit outfit)
+        {
+            foreach (var go in outfitParts) if (go != null) Destroy(go);
+            outfitParts.Clear();
+            CurrentOutfit = outfit != null ? outfit.Copy() : new Outfit();
+            if (Rig == null) return;
+            for (int i = 0; i < Outfit.SlotCount; i++)
+            {
+                var item = Cosmetics.Find((CosmeticSlot)i, CurrentOutfit.ids[i]);
+                if (item != null && item.build != null) item.build(new CosmeticBuilder(Rig, outfitParts));
+            }
         }
 
         public void ShowWeapon(WeaponDef def)

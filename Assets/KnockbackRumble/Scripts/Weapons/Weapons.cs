@@ -72,11 +72,11 @@ namespace KnockbackRumble
             {
                 case WeaponKind.Shotgun:
                     Fx.Muzzle(muzzle, dir, def.color, 0.55f);
-                    Puffs.SmokeBurst(muzzle + dir * 0.4f, 4, 1.2f, 0.35f, 0.8f);
+                    Puffs.SmokeBurst(muzzle + dir * 0.4f, 3, 1.2f, 0.3f, 0.35f);
                     break;
                 case WeaponKind.Rocket:
                     Fx.Muzzle(muzzle, dir, def.color, 0.4f);
-                    Puffs.SmokeBurst(muzzle - dir * 1.1f, 5, 1.5f, 0.45f, 0.9f); // back-blast
+                    Puffs.SmokeBurst(muzzle - dir * 1.1f, 3, 1.5f, 0.35f, 0.4f); // back-blast
                     break;
                 case WeaponKind.Hitscan:
                     Fx.Muzzle(muzzle, dir, def.color, def == WeaponDef.LongShot ? 0.45f : 0.22f);
@@ -173,7 +173,7 @@ namespace KnockbackRumble
                 Vector3 d = end - muzzle;
                 int n = Mathf.Min(40, Mathf.FloorToInt(d.magnitude / 1.5f));
                 for (int i = 1; i <= n; i++)
-                    Puffs.Smoke(muzzle + d * (i / (float)(n + 1)), Random.insideUnitSphere * 0.2f + Vector3.up * 0.2f, 0.22f, 0.9f);
+                    Puffs.Smoke(muzzle + d * (i / (float)(n + 1)), Random.insideUnitSphere * 0.2f + Vector3.up * 0.2f, 0.16f, 0.35f);
             }
             else Fx.Tracer(muzzle, end, def.color);
         }
