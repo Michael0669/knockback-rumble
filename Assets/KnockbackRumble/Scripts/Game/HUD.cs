@@ -415,9 +415,8 @@ namespace KnockbackRumble
 
         static readonly string[,] Controls =
         {
-            { "WASD", "Move" }, { "SPACE", "Jump (mash to recover)" }, { "CTRL / C", "Dive" },
-            { "LEFT MOUSE", "Fire" }, { "RIGHT MOUSE", "Aim / scope" }, { "E", "Shove" },
-            { "G", "Throw gadget" }, { "Q", "Call in a streak" }, { "ESC", "Menu / loadout" }, { "M", "Mute mic" },
+            { "WASD", "Move" }, { "SPACE", "Jump" }, { "L-CLICK", "Fire" }, { "R-CLICK", "Aim" },
+            { "E", "Shove" }, { "G", "Gadget" }, { "Q", "Streak" },
         };
 
         void DrawLoading(RaceManager race, ShowManager show, Contestant p, float W, float H)
@@ -430,103 +429,65 @@ namespace KnockbackRumble
             float progress = Mathf.Clamp01(1f - remaining / total);
             float cx = W / 2f;
 
-            // ---- Top: which event and its rules ----
-            Label(new Rect(cx - 400f, 34f, 800f, 36f), "EVENT " + (show.RoundIndex + 1) + " OF " + show.RoundCount, mid,
-                UiSkin.LabelBlue, UiSkin.Display, 28);
+            // ---- Event name and the one-line goal ----
+            Label(new Rect(cx - 400f, 90f, 800f, 36f), "EVENT " + (show.RoundIndex + 1) + " OF " + show.RoundCount, mid,
+                UiSkin.LabelBlue, UiSkin.Display, 30);
             float pop = 1f + 0.02f * Mathf.Sin(Time.time * 2.4f);
-            var titleRect = new Rect(cx - 600f, 70f, 1200f, 100f);
+            var titleRect = new Rect(cx - 600f, 132f, 1200f, 110f);
             var old = GUI.matrix;
             GUI.matrix = old * UiSkin.Around(titleRect.center, Mathf.Sin(Time.time * 0.9f) * 1.2f, pop);
             Label(titleRect, Events.Title(race.Kind), huge, UiSkin.Gold);
             GUI.matrix = old;
-            if (show.RoundIndex == 0)
-                Label(new Rect(cx - 600f, 168f, 1200f, 34f), "Most cash after " + show.RoundCount + " events wins the show.", center,
-                    UiSkin.Cream, UiSkin.Display, 26);
+            Label(new Rect(cx - 700f, 252f, 1400f, 50f), Events.Goal(race.Kind), center, UiSkin.Cream, UiSkin.Display, 40);
 
-            var rules = Events.Rules(race.Kind);
-            float rw = Mathf.Min(1400f, W - 80f);
-            var rp = new Rect(cx - rw / 2f, 214f, rw, 56f + rules.Length * 46f);
-            UiSkin.Panel(rp);
-            Label(new Rect(rp.x + 36f, rp.y + 14f, 300f, 34f), "HOW IT WORKS", left, UiSkin.LabelBlue, UiSkin.Display, 24);
-            for (int i = 0; i < rules.Length; i++)
+            // ---- Three rule cards ----
+            var cards = Events.RuleCards(race.Kind);
+            int n = cards.GetLength(0);
+            float cw = 380f, ch = 190f, gap = 36f;
+            float x0 = cx - (n * cw + (n - 1) * gap) / 2f;
+            for (int i = 0; i < n; i++)
             {
-                float y = rp.y + 52f + i * 46f;
-                UiSkin.Image(new Rect(rp.x + 40f, y + 12f, 16f, 16f), UiSkin.Dot, UiSkin.Gold);
-                Label(new Rect(rp.x + 70f, y, rp.width - 100f, 42f), rules[i], left, UiSkin.Cream, UiSkin.Body, 25);
+                var r = new Rect(x0 + i * (cw + gap), 350f, cw, ch);
+                UiSkin.Panel(r);
+                Label(new Rect(r.x, r.y + 30f, r.width, 80f), cards[i, 0], big, UiSkin.Gold);
+                Label(new Rect(r.x + 10f, r.y + 116f, r.width - 20f, 40f), cards[i, 1], center, UiSkin.Cream, UiSkin.Display, 28);
             }
 
-            // ---- Middle: controls (left), your loadout (middle), standings (right) ----
-            float top = rp.yMax + 26f, bottom = H - 150f;
-            float gap = 30f, colW = (W - 80f - 2f * gap) / 3f, ph = bottom - top;
+            // ---- Where you stand (after the first event) ----
+            if (show.RoundIndex > 0 && p != null)
+            {
+                int place = show.Ranking(race.Contestants).IndexOf(p) + 1;
+                Label(new Rect(cx - 600f, 580f, 1200f, 44f), "You're #" + place + " with " + Money(show.Cash(p)), center,
+                    place == 1 ? UiSkin.Gold : UiSkin.Cream, UiSkin.Display, 32);
+            }
+            else
+            {
+                Label(new Rect(cx - 600f, 580f, 1200f, 44f), "Most cash after " + show.RoundCount + " events wins.", center,
+                    UiSkin.Cream, UiSkin.Display, 32);
+            }
 
-            var cp = new Rect(40f, top, colW, ph);
-            UiSkin.Panel(cp);
-            Label(new Rect(cp.x + 30f, cp.y + 14f, 300f, 34f), "CONTROLS", left, UiSkin.LabelBlue, UiSkin.Display, 24);
+            // ---- Controls: one row ----
             int rows = Controls.GetLength(0);
-            float rowH = Mathf.Min(34f, (ph - 64f) / rows);
+            float kw = 168f, kgap = 14f;
+            float kx = cx - (rows * kw + (rows - 1) * kgap) / 2f;
             for (int i = 0; i < rows; i++)
             {
-                float y = cp.y + 54f + i * rowH;
-                Label(new Rect(cp.x + 30f, y, 170f, rowH), Controls[i, 0], left, UiSkin.Gold, UiSkin.Display, 20);
-                Label(new Rect(cp.x + 200f, y, cp.width - 220f, rowH), Controls[i, 1], left, UiSkin.Cream, UiSkin.BodyBold, 20);
+                var r = new Rect(kx + i * (kw + kgap), 700f, kw, 92f);
+                UiSkin.Card(r);
+                Label(new Rect(r.x, r.y + 10f, r.width, 40f), Controls[i, 0], center, UiSkin.Gold, UiSkin.Display, 26);
+                Label(new Rect(r.x, r.y + 48f, r.width, 32f), Controls[i, 1], center, UiSkin.Cream, UiSkin.BodyBold, 22);
             }
 
-            var lp = new Rect(40f + colW + gap, top, colW, ph);
-            UiSkin.Panel(lp);
-            Label(new Rect(lp.x + 30f, lp.y + 14f, 300f, 34f), "YOUR LOADOUT", left, UiSkin.LabelBlue, UiSkin.Display, 24);
-            if (p != null)
-            {
-                var l = p.Loadout;
-                var g = Loadouts.GadgetInfo(l.gadget);
-                var p1 = Loadouts.PerkInfo(l.perk1);
-                var p2 = Loadouts.PerkInfo(l.perk2);
-                var s1 = Loadouts.StreakInfo(l.streak1);
-                var s2 = Loadouts.StreakInfo(l.streak2);
-                float y = lp.y + 56f;
-                y = LoadoutLine(lp, y, "GUN", l.PrimaryDef.name + "  (" + l.PrimaryDef.ammo + " shots)", l.PrimaryDef.color);
-                y = LoadoutLine(lp, y, "GADGET", g != null ? g.name : "-", g != null ? g.color : UiSkin.Muted);
-                y = LoadoutLine(lp, y, "PERKS", (p1 != null ? p1.name : "-") + ",  " + (p2 != null ? p2.name : "-"), UiSkin.Cream);
-                string streaks = (s1 != null ? s1.name + " (" + s1.cost + ")" : "-") + (s2 != null ? ",  " + s2.name + " (" + s2.cost + ")" : "");
-                y = LoadoutLine(lp, y, "STREAKS", streaks, UiSkin.Cream);
-                var tip = new GUIStyle(left) { wordWrap = true, alignment = TextAnchor.UpperLeft };
-                Label(new Rect(lp.x + 30f, y + 8f, lp.width - 60f, lp.yMax - y - 20f),
-                    "TIP: " + Events.Tip(race.Kind) + "\nChange your loadout from the Esc menu (applies next event).",
-                    tip, UiSkin.Muted, UiSkin.BodyBold, 19);
-            }
-
-            var sp = new Rect(40f + 2f * (colW + gap), top, colW, ph);
-            UiSkin.Panel(sp);
-            Label(new Rect(sp.x + 30f, sp.y + 14f, 300f, 34f), show.RoundIndex == 0 ? "CONTESTANTS" : "STANDINGS", left,
-                UiSkin.LabelBlue, UiSkin.Display, 24);
-            var order = show.Ranking(race.Contestants);
-            float srow = Mathf.Min(34f, (ph - 64f) / Mathf.Max(1, order.Count));
-            for (int i = 0; i < order.Count; i++)
-            {
-                var c = order[i];
-                float y = sp.y + 54f + i * srow;
-                Color col = c.IsPlayer ? UiSkin.Gold : UiSkin.Cream;
-                Box(new Rect(sp.x + 30f, y + srow / 2f - 7f, 14f, 14f), c.Color);
-                Label(new Rect(sp.x + 54f, y, 40f, srow), (i + 1).ToString(), left, col, UiSkin.Display, 20);
-                Label(new Rect(sp.x + 90f, y, sp.width - 230f, srow), c.DisplayName + (c.IsPlayer ? "  (you)" : ""), left, col, UiSkin.BodyBold, 20);
-                Label(new Rect(sp.xMax - 150f, y, 120f, srow), Money(show.Cash(c)), right, UiSkin.Gold, UiSkin.Display, 20);
-            }
-
-            // ---- Bottom: loading bar ----
-            var bar = new Rect(cx - rw / 2f, H - 92f, rw, 34f);
+            // ---- Loading bar ----
+            float bw = Mathf.Min(1200f, W - 80f);
+            var bar = new Rect(cx - bw / 2f, H - 110f, bw, 34f);
             string line = LoadingLines[Mathf.Abs(Mathf.FloorToInt(race.RaceStartTime * 7f) + Mathf.FloorToInt(progress * 4f)) % LoadingLines.Length];
-            Label(new Rect(bar.x, bar.y - 44f, bar.width - 120f, 38f), line, left, UiSkin.Cream, UiSkin.Display, 24);
+            Label(new Rect(bar.x, bar.y - 44f, bar.width - 120f, 38f), line, left, UiSkin.Muted, UiSkin.Display, 24);
             Label(new Rect(bar.xMax - 120f, bar.y - 44f, 120f, 38f), Mathf.FloorToInt(progress * 100f) + "%", right, UiSkin.Gold, UiSkin.Display, 26);
             UiSkin.Pill(bar, UiSkin.PillDark);
             float fillW = Mathf.Max(30f, bar.width * progress);
             UiSkin.Pill(new Rect(bar.x, bar.y, fillW, bar.height), UiSkin.Yellow);
             UiSkin.StripeBand(new Rect(bar.x + 12f, bar.y + 8f, Mathf.Max(0f, fillW - 24f), bar.height - 16f), Time.time * 0.8f);
-        }
-
-        float LoadoutLine(Rect panel, float y, string label, string value, Color color)
-        {
-            Label(new Rect(panel.x + 30f, y, 130f, 30f), label, left, UiSkin.Muted, UiSkin.Display, 18);
-            Label(new Rect(panel.x + 30f, y + 26f, panel.width - 60f, 34f), value, left, color, UiSkin.Body, 22);
-            return y + 66f;
         }
 
         // ---------- Helpers ----------
