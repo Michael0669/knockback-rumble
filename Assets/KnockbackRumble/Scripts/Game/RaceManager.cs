@@ -238,12 +238,40 @@ namespace KnockbackRumble
             else HandleFell(c, attacker, selfOwn);
         }
 
+        /// <summary>
+        /// Where a dummy comes back after falling. Everyone gets their own spot (a grid of 8 around
+        /// the checkpoint, or a free arena spawn point) so nobody lands on top of anybody else.
+        /// </summary>
         Vector3 RespawnFor(Contestant c)
         {
             if (Kind == EventKind.Gauntlet || Course == null || Course.spawnPoints == null || Course.spawnPoints.Length == 0)
-                return c.RespawnPoint + new Vector3(Random.Range(-2f, 2f), 0.5f, Random.Range(-1f, 1f));
-            // Arenas: drop back in at a random spawn point.
-            return Course.spawnPoints[Random.Range(0, Course.spawnPoints.Length)] + Vector3.up * 0.5f;
+            {
+                if (c.CheckpointIndex < 0) return c.RespawnPoint + Vector3.up * 0.5f; // back to their own start spot
+                // 2 rows of 4 around the checkpoint gate; start at this dummy's own slot, skip taken ones.
+                for (int k = 0; k < 8; k++)
+                {
+                    int slot = (c.NetId + k) % 8;
+                    var p = c.RespawnPoint + new Vector3(-3.6f + (slot % 4) * 2.4f, 0.5f, slot < 4 ? -1.6f : 1.4f);
+                    if (IsFree(p, c)) return p;
+                }
+                return c.RespawnPoint + new Vector3(Random.Range(-3.5f, 3.5f), 0.5f, Random.Range(-1.5f, 1.5f));
+            }
+            // Arenas: drop back in at a free spawn point.
+            int start = Random.Range(0, Course.spawnPoints.Length);
+            for (int k = 0; k < Course.spawnPoints.Length; k++)
+            {
+                var p = Course.spawnPoints[(start + k) % Course.spawnPoints.Length] + Vector3.up * 0.5f;
+                if (IsFree(p, c)) return p;
+            }
+            return Course.spawnPoints[start] + Vector3.up * 0.5f;
+        }
+
+        bool IsFree(Vector3 p, Contestant except)
+        {
+            foreach (var o in Contestants)
+                if (o != null && o != except && Shapes.Flat(o.transform.position - p).sqrMagnitude < 1.6f * 1.6f &&
+                    Mathf.Abs(o.transform.position.y - p.y) < 2.5f) return false;
+            return true;
         }
 
         Vector3 LoungePoint()

@@ -304,7 +304,7 @@ namespace KnockbackRumble
                 root.localRotation = Quaternion.Euler(0f, side < 0f ? 0f : 180f, 0f); // local +X points at the walkway
 
                 // Housing on a post from the pit
-                Kit.Box(root, "Housing", new Vector3(-0.6f, 0f, 0f), new Vector3(1.2f, 2.2f, 2.2f), Kit.SafetyYellow);
+                Kit.Box(root, "Housing", new Vector3(-0.6f, 0f, 0f), new Vector3(1.2f, 2.2f, 2.2f), Kit.SafetyYellow, true);
                 Kit.Box(root, "Mouth", new Vector3(0.01f, 0f, 0f), new Vector3(0.05f, 1.6f, 1.6f), black);
                 for (int k = 0; k < 4; k++)
                     Kit.Box(root, "Stripe", new Vector3(-0.6f, 0.9f - k * 0.6f, 1.105f), new Vector3(1.2f, 0.3f, 0.01f), k % 2 == 0 ? black : Kit.SafetyYellow);
@@ -319,6 +319,18 @@ namespace KnockbackRumble
                 LowPoly.Make(LowPoly.Ico(1), "Fist", glove, new Vector3(0.55f, 0f, 0f), new Vector3(1.2f, 1.1f, 1.25f), red);
                 LowPoly.Make(LowPoly.Ico(1), "Thumb", glove, new Vector3(0.45f, 0.15f, 0.6f), new Vector3(0.45f, 0.4f, 0.4f), red);
                 LowPoly.Make(LowPoly.Cylinder(10), "Cuff", glove, new Vector3(-0.05f, 0f, 0f), new Vector3(0.95f, 0.35f, 0.95f), white, new Vector3(0f, 0f, 90f));
+
+                // Solid: you bump into the glove and the arm
+                var gloveCol = glove.gameObject.AddComponent<SphereCollider>();
+                gloveCol.center = new Vector3(0.55f, 0f, 0f);
+                gloveCol.radius = 0.62f;
+                var gloveRb = glove.gameObject.AddComponent<Rigidbody>();
+                gloveRb.isKinematic = true;
+                gloveRb.useGravity = false;
+                var armCol = arm.gameObject.AddComponent<CapsuleCollider>();
+                armCol.direction = 1;
+                armCol.radius = 0.5f;
+                armCol.height = 1f;
 
                 var pg = root.gameObject.AddComponent<PunchGlove>();
                 pg.glove = glove;
