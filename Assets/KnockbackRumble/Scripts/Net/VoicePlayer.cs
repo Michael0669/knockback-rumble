@@ -12,6 +12,9 @@ namespace KnockbackRumble
         readonly object gate = new object();
         Transform follow;
 
+        /// <summary>Loudness multiplier set by NetVoice (boost x master x this player's slider).</summary>
+        public volatile float Gain = 1f;
+
         public void Init(int sampleRate)
         {
             ring = new float[sampleRate * 2];
@@ -22,8 +25,8 @@ namespace KnockbackRumble
             source.loop = true;
             source.spatialBlend = 0f;
             source.rolloffMode = AudioRolloffMode.Linear;
-            source.minDistance = 3f;
-            source.maxDistance = 35f;
+            source.minDistance = 6f;   // full volume within 6 m
+            source.maxDistance = 50f;  // fades out by 50 m
             source.dopplerLevel = 0f;
             source.priority = 10;
             source.Play();
@@ -57,6 +60,9 @@ namespace KnockbackRumble
             }
         }
 
+        /// <summary>Boosts quiet voices without harsh clipping when someone yells.</summary>
+        static float SoftLimit(float x) => (float)System.Math.Tanh(x);
+
         // Called on Unity's audio thread.
         void OnAudioRead(float[] data)
         {
@@ -71,7 +77,7 @@ namespace KnockbackRumble
                         if (count == 0) buffering = true;
                         continue;
                     }
-                    data[i] = ring[readPos];
+                    data[i] = SoftLimit(ring[readPos] * Gain);
                     readPos = (readPos + 1) % ring.Length;
                     count--;
                 }

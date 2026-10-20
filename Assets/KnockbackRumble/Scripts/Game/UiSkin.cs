@@ -255,6 +255,29 @@ namespace KnockbackRumble
             return GUI.TextField(r, value ?? "", maxLength, field);
         }
 
+        static GUIStyle sliderHit, thumbHit;
+
+        /// <summary>A chunky slider: dark track, colored fill, cream knob. Returns the new value.</summary>
+        public static float Slider(Rect r, float value, float min, float max, Color fill)
+        {
+            if (sliderHit == null)
+            {
+                sliderHit = new GUIStyle();
+                thumbHit = new GUIStyle { fixedWidth = 30f, fixedHeight = 30f };
+            }
+            value = GUI.HorizontalSlider(r, value, min, max, sliderHit, thumbHit);
+
+            float t = Mathf.InverseLerp(min, max, value);
+            float cy = r.center.y;
+            var track = new Rect(r.x, cy - 8f, r.width, 16f);
+            Pill(track, PillDark);
+            float knobX = r.x + 15f + (r.width - 30f) * t;
+            if (knobX - r.x > 8f) Pill(new Rect(r.x, cy - 8f, knobX - r.x, 16f), fill);
+            Image(new Rect(knobX - 15f, cy - 15f, 30f, 30f), Dot, Ink);
+            Image(new Rect(knobX - 12f, cy - 12f, 24f, 24f), Dot, Cream);
+            return value;
+        }
+
         /// <summary>An on/off switch; the whole row is clickable.</summary>
         public static bool Switch(Rect clickArea, Rect knob, bool on)
         {

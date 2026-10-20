@@ -23,6 +23,38 @@ namespace KnockbackRumble
         public static NetVoice Instance { get; private set; }
 
         public bool MicOn { get; private set; } = true;
+
+        /// <summary>Steam's decoded voice is quiet; everyone gets this much louder before the sliders.</summary>
+        public const float Boost = 2.5f;
+        public const float MaxVolume = 2f;   // sliders go up to 200%
+
+        /// <summary>"All voices" slider, 0..2. Saved between sessions.</summary>
+        public float MasterVolume { get; private set; } = 1f;
+        readonly Dictionary<ulong, float> volumes = new Dictionary<ulong, float>();
+
+        public void SetMasterVolume(float v)
+        {
+            MasterVolume = Mathf.Clamp(v, 0f, MaxVolume);
+            PlayerPrefs.SetFloat("kr_voice_master", MasterVolume);
+        }
+
+        /// <summary>Per-player volume, 0..2 (remembered per Steam account).</summary>
+        public float GetVolume(ulong peer)
+        {
+            if (!volumes.TryGetValue(peer, out float v))
+            {
+                v = PlayerPrefs.GetFloat("kr_voice_" + peer, 1f);
+                volumes[peer] = v;
+            }
+            return v;
+        }
+
+        public void SetVolume(ulong peer, float v)
+        {
+            v = Mathf.Clamp(v, 0f, MaxVolume);
+            volumes[peer] = v;
+            PlayerPrefs.SetFloat("kr_voice_" + peer, v);
+        }
         public bool Available => steamReady && Net.Online;
 
         readonly Dictionary<ulong, VoicePlayer> players = new Dictionary<ulong, VoicePlayer>();
@@ -42,7 +74,10 @@ namespace KnockbackRumble
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            MasterVolume = PlayerPrefs.GetFloat("kr_voice_master", 1f);
         }
+
+        void OnApplicationQuit() => PlayerPrefs.Save();
 
         void OnDestroy()
         {
@@ -85,6 +120,7 @@ namespace KnockbackRumble
             {
                 var dummy = match != null && match.InMatch ? match.HumanFor(kv.Key) : null;
                 kv.Value.Follow(dummy != null ? dummy.transform : null);
+                kv.Value.Gain = Boost * MasterVolume * GetVolume(kv.Key);
             }
         }
 

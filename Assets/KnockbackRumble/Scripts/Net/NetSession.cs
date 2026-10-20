@@ -103,6 +103,16 @@ namespace KnockbackRumble
 
         public NetPeer FindPeer(ulong id) => Peers.Find(p => p.Id == id);
 
+        /// <summary>The name we show others: what's typed in the menu, or the Steam name if that's blank / the default.</summary>
+        string DisplayName()
+        {
+            string n = (LocalName ?? "").Trim();
+            var steam = SteamService.Instance;
+            if ((n.Length == 0 || n == "Dummy") && steam != null && steam.Ready && !string.IsNullOrEmpty(steam.PersonaName))
+                n = steam.PersonaName;
+            return Clean(n);
+        }
+
         // =====================================================================
         // Starting and stopping
         // =====================================================================
@@ -148,7 +158,7 @@ namespace KnockbackRumble
             LocalId = HostId = localId;
             ClockOffset = 0f;
             Peers.Clear();
-            Peers.Add(new NetPeer { Id = localId, Name = LocalName, Color = 0, IsHost = true, LastHeard = Time.unscaledTime });
+            Peers.Add(new NetPeer { Id = localId, Name = DisplayName(), Color = 0, IsHost = true, LastHeard = Time.unscaledTime });
             State = SessionState.Connected;
             LastError = null;
             RosterChanged?.Invoke();
@@ -334,7 +344,7 @@ namespace KnockbackRumble
             {
                 if (now >= nextHello)
                 {
-                    SendTo(HostId, writer.Begin(MsgType.Hello).Int(NetProtocol.Version).Str(LocalName));
+                    SendTo(HostId, writer.Begin(MsgType.Hello).Int(NetProtocol.Version).Str(DisplayName()));
                     nextHello = now + 1f;
                 }
                 if (now - connectStarted > ConnectTimeout) { Leave("Couldn't reach the host."); return; }
