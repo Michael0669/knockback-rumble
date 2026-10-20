@@ -206,10 +206,47 @@ namespace KnockbackRumble
             if (UiSkin.Button(new Rect(W - 200f, H - 160f, 160f, 60f), "VOLUME", UiSkin.Dark, null, 26)) showVolumes = true;
         }
 
+        float resetArmedUntil = -99f;
+
         void DrawTools(NetSession session, float H)
         {
-            float tx = 40f, tw = 560f, th = 236f, ty = H - 86f - 14f - th;
+            float tx = 40f, tw = 560f, th = 236f + 220f, ty = H - 86f - 14f - th;
             UiSkin.Panel(new Rect(tx, ty, tw, th));
+
+            // ---- Progress cheats (for testing unlocks, the shop, etc.) ----
+            UiSkin.Heading(new Rect(tx + 30f, ty + 20f, 500f, 30f), "PROGRESS  (testing only)", 22, UiSkin.LabelBlue);
+            UiSkin.Text(new Rect(tx + 30f, ty + 52f, 500f, 30f),
+                "Level " + Profile.Level + "   -   " + Profile.Xp + " / " + Profile.XpToNext + " XP   -   Wallet " + HUD.Money(Profile.Wallet),
+                UiSkin.BodyBold, 19, UiSkin.Cream, TextAnchor.MiddleLeft, false);
+            if (UiSkin.Button(new Rect(tx + 30f, ty + 88f, 160f, 60f), "+$10,000", UiSkin.Green, null, 24))
+            {
+                Profile.TestAddCash(10000);
+                Sfx.Ui("cash");
+            }
+            if (UiSkin.Button(new Rect(tx + 200f, ty + 88f, 160f, 60f), "+1 LEVEL", UiSkin.Teal, null, 24))
+            {
+                Profile.TestLevelUp(false);
+                Sfx.Ui("streak_ready");
+            }
+            if (UiSkin.Button(new Rect(tx + 370f, ty + 88f, 160f, 60f), "MAX LEVEL", UiSkin.Teal, "unlock everything", 22))
+            {
+                Profile.TestLevelUp(true);
+                Sfx.Ui("fanfare");
+            }
+            bool armed = Now < resetArmedUntil;
+            if (UiSkin.Button(new Rect(tx + 30f, ty + 158f, 500f, 50f), armed ? "CLICK AGAIN TO WIPE EVERYTHING" : "RESET PROFILE", UiSkin.Red,
+                    null, 22))
+            {
+                if (armed)
+                {
+                    Profile.ResetAll();
+                    resetArmedUntil = -99f;
+                    Sfx.Ui("sad_trombone");
+                }
+                else resetArmedUntil = Now + 3f;
+            }
+            ty += 220f;
+
             UiSkin.Heading(new Rect(tx + 30f, ty + 20f, 500f, 30f), "DIRECT CONNECT  (testing without Steam)", 22, UiSkin.LabelBlue);
 
             UiSkin.Text(new Rect(tx + 30f, ty + 64f, 50f, 52f), "IP", UiSkin.Body, 22, UiSkin.Cream);

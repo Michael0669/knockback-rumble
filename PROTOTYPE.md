@@ -45,6 +45,8 @@ for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countd
 - **HOST A GAME**: makes a friends-only Steam lobby. Invite friends from there.
 - **Join a friend**: accept their Steam invite, or right-click them in your Steam friends list → **Join Game**.
 - **TESTING TOOLS → HOST DIRECT / JOIN DIRECT**: connect by IP address, for testing without Steam.
+- **TESTING TOOLS → PROGRESS**: +$10,000 wallet cash, +1 level, MAX LEVEL (unlocks every weapon, perk and streak),
+  and RESET PROFILE (click twice) to go back to a brand-new player. Take these out before release.
 
 Your level, XP and wallet show at the bottom right of the main menu.
 

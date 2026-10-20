@@ -267,6 +267,33 @@ namespace KnockbackRumble
 
         public static int LastXpGained { get; private set; }
 
+        // ---------- Testing tools ----------
+
+        /// <summary>Testing: add wallet cash.</summary>
+        public static void TestAddCash(int amount)
+        {
+            D.wallet = Mathf.Max(0, D.wallet + amount);
+            Save();
+        }
+
+        /// <summary>Testing: jump straight to the next level (or the max).</summary>
+        public static void TestLevelUp(bool toMax)
+        {
+            var d = D;
+            d.level = toMax ? Loadouts.MaxLevel : Mathf.Min(Loadouts.MaxLevel, d.level + 1);
+            d.xp = 0;
+            Save();
+        }
+
+        /// <summary>Testing: wipe level, XP, wallet, stats, owned items, outfit and loadout back to a brand-new player.</summary>
+        public static void ResetAll()
+        {
+            data = new Data();
+            loadout = new Loadout();
+            loadout.Sanitize(data.level);
+            Save();
+        }
+
         // ---------- Cosmetics ----------
 
         static int Key(CosmeticItem i) => (int)i.slot * 256 + i.id;
