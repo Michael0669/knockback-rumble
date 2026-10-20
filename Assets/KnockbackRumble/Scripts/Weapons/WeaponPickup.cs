@@ -35,11 +35,28 @@ namespace KnockbackRumble
             box.size = new Vector3(1.6f, 2f, 1.6f);
             box.center = new Vector3(0f, 1f, 0f);
 
-            var go = Shapes.Make(PrimitiveType.Cube, "Crate", transform, new Vector3(0f, 1f, 0f), Vector3.one * 0.8f,
-                Mats.Get("Crate_Ammo", new Color(0.45f, 0.55f, 0.25f)), false);
-            Shapes.Make(PrimitiveType.Cube, "Band", go.transform, Vector3.zero, new Vector3(1.05f, 0.25f, 1.05f),
-                Mats.Get("Dummy_Black", Palette.Black), false);
-            crate = go.transform;
+            // A military ammo can with brass rounds on top and a glowing ring underneath.
+            var crateRoot = new GameObject("Crate").transform;
+            crateRoot.SetParent(transform, false);
+            crateRoot.localPosition = new Vector3(0f, 1f, 0f);
+            var olive = Mats.Get("Crate_Ammo", new Color(0.4f, 0.48f, 0.24f));
+            var dark = Mats.Get("Gun_Dark", new Color(0.16f, 0.16f, 0.18f));
+            var brass = Mats.Get("Ammo_Brass", new Color(0.9f, 0.7f, 0.3f));
+            Shapes.Make(PrimitiveType.Cube, "Can", crateRoot, Vector3.zero, new Vector3(0.9f, 0.6f, 0.55f), olive, false);
+            Shapes.Make(PrimitiveType.Cube, "Lid", crateRoot, new Vector3(0f, 0.32f, 0f), new Vector3(0.95f, 0.08f, 0.6f), dark, false);
+            Shapes.Make(PrimitiveType.Cube, "Handle", crateRoot, new Vector3(0f, 0.4f, 0f), new Vector3(0.4f, 0.05f, 0.08f), dark, false);
+            Shapes.Make(PrimitiveType.Cube, "Stripe", crateRoot, new Vector3(0f, 0f, 0.28f), new Vector3(0.7f, 0.12f, 0.01f),
+                Mats.Get("Hazard_Stripe", Palette.Stripe), false);
+            for (int i = 0; i < 3; i++)
+            {
+                float x = -0.2f + i * 0.2f;
+                LowPoly.Make(LowPoly.Cylinder(8), "Round", crateRoot, new Vector3(x, 0.55f, 0f), new Vector3(0.09f, 0.3f, 0.09f), brass);
+                LowPoly.Make(LowPoly.Cone(8), "Tip", crateRoot, new Vector3(x, 0.77f, 0f), new Vector3(0.09f, 0.14f, 0.09f),
+                    Mats.Get("Ammo_Copper", new Color(0.8f, 0.45f, 0.25f)));
+            }
+            LowPoly.Make(LowPoly.Torus(16, 4, 0.1f), "Glow", transform, new Vector3(0f, 0.05f, 0f), new Vector3(1.6f, 0.4f, 1.6f),
+                Mats.Unlit("CrateGlow", new Color(0.6f, 1f, 0.4f)));
+            crate = crateRoot;
         }
 
         void Awake() => crate = transform.Find("Crate");

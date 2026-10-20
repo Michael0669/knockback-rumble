@@ -89,6 +89,7 @@ namespace KnockbackRumble
             {
                 var b = Shapes.Make(PrimitiveType.Cylinder, "Bumper", root, p + Vector3.up, new Vector3(1.6f, 1f, 1.6f), bumper);
                 b.AddComponent<Bumper>();
+                Props.DressBumper(b.transform);
             }
 
             // Ammo crates
@@ -138,6 +139,34 @@ namespace KnockbackRumble
                 Block(root, "CashStack", p, new Vector3(3f, h, 1.6f), cashGreen, false, new Vector3(0f, (float)rng.NextDouble() * 90f, 0f));
             }
 
+            // Gold bars stacked around the dais, giant coins, and the crowd
+            var goldBar = Mats.Get("Gold", Palette.Gold);
+            for (int i = 0; i < 4; i++)
+            {
+                var corner = Quaternion.Euler(0f, 45f + i * 90f, 0f) * new Vector3(0f, 1.5f, 6.4f);
+                for (int k = 0; k < 3; k++)
+                    Block(root, "GoldBar", corner + new Vector3(0f, 0.15f + k * 0.3f, 0f), new Vector3(1.2f - k * 0.3f, 0.3f, 0.6f), goldBar, false,
+                        new Vector3(0f, 45f + i * 90f, 0f));
+            }
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * 60f * Mathf.Deg2Rad;
+                var pivot = new GameObject("GiantCoin").transform;
+                pivot.SetParent(root, false);
+                pivot.localPosition = new Vector3(Mathf.Sin(a) * 30f, -2f + (i % 2) * 3f, Mathf.Cos(a) * 30f);
+                pivot.localEulerAngles = new Vector3(0f, i * 60f, 0f);
+                pivot.gameObject.AddComponent<Spinner>().degreesPerSecond = 20f + i * 3f;
+                LowPoly.Make(LowPoly.Cylinder(14), "Coin", pivot, Vector3.zero, new Vector3(5f, 0.6f, 5f), goldBar, new Vector3(90f, 0f, 0f));
+                Props.Sign(pivot, "$", new Vector3(0f, 0f, -0.35f), 0.4f, new Color(0.6f, 0.45f, 0.1f));
+            }
+            var srng = new System.Random(33);
+            Props.Grandstand(root, new Vector3(0f, -1f, -32f), 0f, 40f, 5, srng, 13f);
+            Props.Grandstand(root, new Vector3(-32f, -1f, 0f), 90f, 40f, 5, srng, 13f);
+            Props.Grandstand(root, new Vector3(32f, -1f, 0f), -90f, 40f, 5, srng, 13f);
+            foreach (var c in new[] { new Vector3(-24f, -14f, -24f), new Vector3(24f, -14f, -24f), new Vector3(-24f, -14f, 24f), new Vector3(24f, -14f, 24f) })
+                Props.LightTower(root, c, 30f, Vector3.zero);
+            Props.Backdrop(root, Vector3.zero, 60f, 11, "PAYDAY LOANZ");
+
             Sign(root, "CASH GRAB", new Vector3(0f, 15f, 31f), 0.6f, Palette.Gold);
             Sign(root, "sponsored by PAYDAY LOANZ 4 U  (only 690% APR!)", new Vector3(0f, 12.6f, 31f), 0.16f, Color.white);
             return info;
@@ -159,6 +188,7 @@ namespace KnockbackRumble
             var couch = Mats.Get("Couch", new Color(0.55f, 0.25f, 0.45f));
             var gold = Mats.Get("Gold", Palette.Gold);
             var white = Mats.Get("White", Palette.White);
+            var crackMat = Mats.Get("Crumble_Crack", new Color(0.2f, 0.17f, 0.15f));
 
             var root = new GameObject("CrumblePlaza").transform;
             if (parent != null) root.SetParent(parent, false);
@@ -181,6 +211,11 @@ namespace KnockbackRumble
                     Vector3 p = new Vector3(-half + tile * (x + 0.5f), -0.5f, -half + tile * (z + 0.5f));
                     var t = Block(tilesRoot, "Tile_" + x + "_" + z, p, new Vector3(tile - 0.1f, 1f, tile - 0.1f), (x + z) % 2 == 0 ? tileA : tileB);
                     tiles.Add(t.transform);
+                    // Cracks (children, so they fall with the tile)
+                    int cracks = 1 + (x * 7 + z * 3) % 3;
+                    for (int c = 0; c < cracks; c++)
+                        Block(t.transform, "Crack", new Vector3(((x * 13 + c * 7) % 5 - 2) * 0.12f, 0.505f, ((z * 11 + c * 5) % 5 - 2) * 0.12f),
+                            new Vector3(0.45f, 0.01f, 0.03f), crackMat, false, new Vector3(0f, (x * 37 + z * 53 + c * 71) % 180, 0f));
                 }
             var floor = root.gameObject.AddComponent<CrumbleFloor>();
             floor.tiles = tiles.ToArray();
@@ -235,6 +270,14 @@ namespace KnockbackRumble
             info.loungePoint = CrumbleOrigin + lounge + new Vector3(0f, 0.1f, -0.5f);
             Sign(root, "LOSERS' LOUNGE", lounge + new Vector3(0f, 2.4f, 3.9f), 0.25f, Palette.Gold);
             Sign(root, "complimentary sad snacks", lounge + new Vector3(0f, 1.6f, 3.9f), 0.1f, Color.white);
+
+            var crng = new System.Random(77);
+            Props.Grandstand(root, new Vector3(0f, -1f, -half - 12f), 0f, 36f, 5, crng, 13f);
+            Props.Grandstand(root, new Vector3(-half - 12f, -1f, 0f), 90f, 36f, 5, crng, 13f);
+            Props.Grandstand(root, new Vector3(half + 12f, -1f, 0f), -90f, 36f, 5, crng, 13f);
+            foreach (var c in new[] { new Vector3(-22f, -14f, -22f), new Vector3(22f, -14f, -22f), new Vector3(-22f, -14f, 22f), new Vector3(22f, -14f, 22f) })
+                Props.LightTower(root, c, 28f, Vector3.zero);
+            Props.Backdrop(root, Vector3.zero, 55f, 23, "LOWEST BIDDER CONSTRUCTION");
 
             Sign(root, "CRUMBLE PLAZA", new Vector3(0f, 18f, half + 14f), 0.6f, Palette.Gold);
             Sign(root, "built by the lowest bidder", new Vector3(0f, 15.6f, half + 14f), 0.16f, Color.white);

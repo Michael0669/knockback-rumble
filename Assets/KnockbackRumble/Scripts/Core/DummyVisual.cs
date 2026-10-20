@@ -11,8 +11,8 @@ namespace KnockbackRumble
     public class DummyVisual : MonoBehaviour
     {
         DummyMotor motor;
-        Transform model, legL, legR, armL, armR, gun;
-        Renderer gunRenderer;
+        Transform model, legL, legR, armL, armR, gun, hand;
+        WeaponDef shownWeapon;
         TrailRenderer trail;
         float phase, tumbleAngle, shoveTimer;
         Vector3 tumbleAxis = Vector3.right;
@@ -48,10 +48,11 @@ namespace KnockbackRumble
             armL = Limb("ArmL", new Vector3(-0.45f, 0.38f, 0f), new Vector3(0.18f, 0.3f, 0.18f), -0.3f, body);
             armR = Limb("ArmR", new Vector3(0.45f, 0.38f, 0f), new Vector3(0.18f, 0.3f, 0.18f), -0.3f, body);
 
-            var gunGo = Shapes.Make(PrimitiveType.Cube, "Gun", armR, new Vector3(0f, -0.6f, 0.2f), new Vector3(0.14f, 0.14f, 0.5f), black, false);
-            gun = gunGo.transform;
-            gunRenderer = gunGo.GetComponent<Renderer>();
-            gunGo.SetActive(false);
+            // The hand: weapon models are built pointing along +Z, so this turns them to point down the arm.
+            hand = new GameObject("Hand").transform;
+            hand.SetParent(armR, false);
+            hand.localPosition = new Vector3(0f, -0.6f, 0f);
+            hand.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
             trail = gameObject.AddComponent<TrailRenderer>();
             trail.time = 0.45f;
@@ -78,9 +79,23 @@ namespace KnockbackRumble
 
         public void ShowWeapon(WeaponDef def)
         {
-            if (gun == null) return;
-            gun.gameObject.SetActive(def != null);
-            if (def != null) gunRenderer.sharedMaterial = Mats.Get("Weapon_" + def.id, def.color);
+            if (hand == null || def == shownWeapon) return;
+            shownWeapon = def;
+            if (gun != null) Destroy(gun.gameObject);
+            gun = def != null ? WeaponModels.Build(def, hand).transform : null;
+        }
+
+        /// <summary>Where the barrel ends, for muzzle flashes (falls back to the hand).</summary>
+        public Vector3 MuzzlePoint
+        {
+            get
+            {
+                if (hand == null) return transform.position + Vector3.up * 1.35f + transform.forward * 0.6f;
+                float len = shownWeapon == WeaponDef.LongShot ? 1.15f : shownWeapon == WeaponDef.RocketLauncher ? 0.8f
+                          : shownWeapon == WeaponDef.BoomStick ? 0.74f : 0.45f;
+                float up = shownWeapon == WeaponDef.RocketLauncher ? 0.12f : 0.05f;
+                return hand.TransformPoint(new Vector3(0f, up, len));
+            }
         }
 
         public void PlayShove() => shoveTimer = 0.2f;

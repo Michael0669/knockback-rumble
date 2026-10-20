@@ -12,6 +12,7 @@ namespace KnockbackRumble
         Renderer body;
         Material normal, flash;
         bool lastOn;
+        Transform spark;
 
         public static void Spawn(Contestant c, ushort id, Vector3 pos, Vector3 vel, bool cosmetic)
         {
@@ -35,7 +36,11 @@ namespace KnockbackRumble
             g.owner = c.gameObject;
             g.id = id;
             g.cosmetic = cosmetic;
-            g.body = go.GetComponent<Renderer>();
+            // Looks like a cartoon bomb with a lit fuse; the band flashes faster as it's about to blow.
+            go.GetComponent<Renderer>().enabled = false;
+            g.spark = WeaponModels.CartoonBomb(go.transform, new Color(0.55f, 0.9f, 0.3f));
+            var band = go.transform.Find("BombModel/Band");
+            g.body = band != null ? band.GetComponent<Renderer>() : go.GetComponent<Renderer>();
             g.normal = g.body.sharedMaterial;
             g.flash = Mats.Get("Hazard_Warn", Palette.HazardWarn);
             Gadgets.Register(id, go);
@@ -54,6 +59,8 @@ namespace KnockbackRumble
             bool on = left < 0.8f ? Mathf.Repeat(age * 10f, 1f) < 0.5f : Mathf.Repeat(age * 3f, 1f) < 0.5f;
             if (body != null) body.sharedMaterial = on ? flash : normal;
             if (on && !lastOn) Sfx.At("beep", transform.position, 1f, 0f, 25f);
+            if (spark != null)
+                Puffs.Spark(spark.position, Random.onUnitSphere * 1.5f + Vector3.up, 0.06f, 0.25f, new Color(1f, 0.8f, 0.3f));
             lastOn = on;
 
             if (cosmetic)

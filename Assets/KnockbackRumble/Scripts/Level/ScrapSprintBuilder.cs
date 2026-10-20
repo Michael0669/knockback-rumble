@@ -109,12 +109,16 @@ namespace KnockbackRumble
             for (int i = 0; i < 11; i++)
                 Shapes.Make(PrimitiveType.Cube, "Stripe", stripes, new Vector3(0f, 0f, -13.75f + i * 2.5f), new Vector3(11.6f, 0.04f, 0.6f), stripe, false);
             conveyor.stripes = stripes;
+            var roller = Mats.Get("Prop_DarkSteel", new Color(0.3f, 0.31f, 0.34f));
+            foreach (float z in new[] { 12.5f, 40f })
+                LowPoly.Make(LowPoly.Cylinder(12), "Roller", g, new Vector3(0f, -0.5f, z), new Vector3(1.1f, 12.4f, 1.1f), roller, new Vector3(0f, 0f, 90f));
 
             Vector3[] bumpers = { new Vector3(-3f, 0f, 18f), new Vector3(3f, 0f, 24f), new Vector3(-2.5f, 0f, 30f), new Vector3(3.5f, 0f, 35f) };
             foreach (var p in bumpers)
             {
                 var b = Shapes.Make(PrimitiveType.Cylinder, "Bumper", g, p + Vector3.up, new Vector3(1.6f, 1f, 1.6f), bumper);
                 b.AddComponent<Bumper>();
+                Props.DressBumper(b.transform);
             }
 
             // CP1
@@ -141,13 +145,21 @@ namespace KnockbackRumble
                 var pivot = new GameObject("Pivot").transform;
                 pivot.SetParent(wb, false);
                 pivot.localPosition = new Vector3(0f, 11.8f, 0f);
-                Shapes.Make(PrimitiveType.Cylinder, "Chain", pivot, new Vector3(0f, -5f, 0f), new Vector3(0.15f, 5f, 0.15f), black, false);
-                var ball = Shapes.Make(PrimitiveType.Sphere, "Ball", pivot, new Vector3(0f, -10f, 0f), Vector3.one * 3.2f, hazard, false);
+                // Chain of alternating links down to a spiked steel ball
+                var chainMat = Mats.Get("Prop_DarkSteel", new Color(0.3f, 0.31f, 0.34f));
+                for (int k = 0; k < 14; k++)
+                    LowPoly.Make(LowPoly.Torus(10, 4, 0.3f), "Link", pivot, new Vector3(0f, -0.4f - k * 0.62f, 0f), new Vector3(0.45f, 0.45f, 0.8f),
+                        chainMat, new Vector3(90f, k % 2 == 0 ? 0f : 90f, 0f));
+                var ball = new GameObject("Ball").transform;
+                ball.SetParent(pivot, false);
+                ball.localPosition = new Vector3(0f, -10f, 0f);
+                ball.localScale = Vector3.one * 3.2f;
+                WeaponModels.SpikeBall(ball, Mats.Get("SpikeBall_Body", new Color(0.22f, 0.22f, 0.25f)), metal, 0.28f);
 
                 var comp = wb.gameObject.AddComponent<WreckingBall>();
                 comp.pivot = pivot;
-                comp.ball = ball.transform;
-                comp.ballRadius = 1.6f;
+                comp.ball = ball;
+                comp.ballRadius = 1.9f;
                 comp.phase = i * 2.1f;
             }
         }
@@ -197,6 +209,7 @@ namespace KnockbackRumble
                     crusher.size = new Vector3(6.5f, 2f, 4f);
                     crusher.phase = phases[r, lane];
                     crusher.blockRenderer = block.GetComponent<Renderer>();
+                    DressCrusher(block.transform);
                 }
             }
 
@@ -215,6 +228,13 @@ namespace KnockbackRumble
             spin.localPosition = new Vector3(0f, 0f, 151f);
             Shapes.Make(PrimitiveType.Cylinder, "Post", spin, new Vector3(0f, 0.75f, 0f), new Vector3(1f, 0.75f, 1f), metal);
             var bar = Shapes.Make(PrimitiveType.Cube, "Bar", spin, new Vector3(0f, 0.8f, 0f), new Vector3(13f, 0.35f, 0.35f), hazard, false);
+            for (int k = 0; k < 13; k += 2)
+                Shapes.Make(PrimitiveType.Cube, "Stripe", bar.transform, new Vector3(-0.5f + (k + 0.5f) / 13f, 0f, 0f),
+                    new Vector3(1f / 13f, 1.04f, 1.04f), white, false);
+            var weight = Mats.Get("SpikeBall_Body", new Color(0.22f, 0.22f, 0.25f));
+            LowPoly.Make(LowPoly.Ico(1), "EndL", spin, new Vector3(-6.6f, 0.8f, 0f), Vector3.one * 0.7f, weight);
+            LowPoly.Make(LowPoly.Ico(1), "EndR", spin, new Vector3(6.6f, 0.8f, 0f), Vector3.one * 0.7f, weight);
+            LowPoly.Make(LowPoly.Cylinder(10), "Hub", spin, new Vector3(0f, 0.8f, 0f), new Vector3(1.2f, 0.6f, 1.2f), metal);
             var sb = spin.gameObject.AddComponent<SpinBar>();
             sb.length = 13f;
             sb.barHeight = 0.8f;
@@ -257,19 +277,49 @@ namespace KnockbackRumble
 
         static void BuildScenery(Transform g)
         {
+            // The junkyard pit under the course
             Block(g, "ScrapPit", new Vector3(0f, -14f, 90f), new Vector3(220f, 1f, 280f), pit, false);
             var rng = new System.Random(69);
-            Material[] mats = { rust, metal, floorDark, rust };
-            for (int i = 0; i < 70; i++)
+            Color[] drumColors = { new Color(0.75f, 0.2f, 0.18f), new Color(0.2f, 0.45f, 0.75f), new Color(0.85f, 0.7f, 0.2f), new Color(0.3f, 0.55f, 0.3f) };
+            for (int i = 0; i < 55; i++)
             {
                 float side = rng.NextDouble() < 0.5 ? -1f : 1f;
-                float x = side * (15f + (float)rng.NextDouble() * 30f);
+                float x = side * (13f + (float)rng.NextDouble() * 16f);
                 float z = -20f + (float)rng.NextDouble() * 220f;
-                float h = 3f + (float)rng.NextDouble() * 12f;
-                float w = 2f + (float)rng.NextDouble() * 4f;
-                Block(g, "Scrap", new Vector3(x, -13.5f + h * 0.5f, z), new Vector3(w, h, w * (0.6f + (float)rng.NextDouble())),
-                    mats[rng.Next(mats.Length)], false, new Vector3(0f, (float)rng.NextDouble() * 90f, 0f));
+                var p = new Vector3(x, -13.5f, z);
+                switch (rng.Next(5))
+                {
+                    case 0: Props.TireStack(g, p, 2 + rng.Next(4), rng); break;
+                    case 1: Props.Drum(g, p, drumColors[rng.Next(drumColors.Length)], rng.NextDouble() < 0.4); break;
+                    case 2: Props.CarWreck(g, p, (float)rng.NextDouble() * 360f, drumColors[rng.Next(drumColors.Length)], (float)rng.NextDouble() * 20f - 10f); break;
+                    default: Props.ScrapPile(g, p, 3f + (float)rng.NextDouble() * 4f, rng); break;
+                }
             }
+            // Car stacks: the "towers" of the junkyard
+            for (int i = 0; i < 8; i++)
+            {
+                float side = i % 2 == 0 ? -1f : 1f;
+                var p = new Vector3(side * (24f + (float)rng.NextDouble() * 4f), -13.5f, 10f + i * 22f);
+                for (int k = 0; k < 3 + rng.Next(3); k++)
+                    Props.CarWreck(g, p + Vector3.up * k * 1.9f, (float)rng.NextDouble() * 40f - 20f + (k % 2) * 90f,
+                        drumColors[rng.Next(drumColors.Length)], 0f);
+            }
+
+            // The TV show: grandstands on both sides, light towers, a jumbotron past the finish
+            for (int i = 0; i < 3; i++)
+            {
+                float z = 20f + i * 65f;
+                Props.Grandstand(g, new Vector3(-36f, -1f, z), 90f, 44f, 5, rng, 13f);
+                Props.Grandstand(g, new Vector3(36f, -1f, z), -90f, 44f, 5, rng, 13f);
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                float z = -5f + i * 60f;
+                Props.LightTower(g, new Vector3(-20f, -14f, z), 30f, new Vector3(0f, 0f, z + 10f));
+                Props.LightTower(g, new Vector3(20f, -14f, z), 30f, new Vector3(0f, 0f, z + 10f));
+            }
+            Props.Jumbotron(g, new Vector3(-2.5f, 22f, 205f), 0f, "KNOCKBACK RUMBLE", "brought to you by SHART ENERGY");
+            Props.Backdrop(g, new Vector3(0f, 0f, 90f), 120f, 7, "SHART ENERGY");
         }
 
         // ---------- Kit pieces ----------
@@ -282,8 +332,40 @@ namespace KnockbackRumble
         }
 
         /// <summary>A 1m-thick slab whose top surface is at "top".</summary>
-        static GameObject Floor(Transform g, string name, float x, float z0, float z1, float width, float top, Material mat) =>
-            Block(g, name, new Vector3(x, top - 0.5f, (z0 + z1) * 0.5f), new Vector3(width, 1f, z1 - z0), mat);
+        static GameObject Floor(Transform g, string name, float x, float z0, float z1, float width, float top, Material mat)
+        {
+            var go = Block(g, name, new Vector3(x, top - 0.5f, (z0 + z1) * 0.5f), new Vector3(width, 1f, z1 - z0), mat);
+            // Yellow/black edge trim so you can read where the drop is
+            float len = z1 - z0, zc = (z0 + z1) * 0.5f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Block(g, name + "_Edge", new Vector3(x + side * (width * 0.5f + 0.03f), top - 0.3f, zc), new Vector3(0.06f, 0.6f, len), stripe, false);
+                int n = Mathf.Max(1, Mathf.FloorToInt(len / 1.2f));
+                for (int i = 0; i < n; i += 2)
+                    Block(g, name + "_EdgeBlack", new Vector3(x + side * (width * 0.5f + 0.05f), top - 0.3f, z0 + (i + 0.5f) * len / n),
+                        new Vector3(0.06f, 0.6f, len / n), black, false);
+            }
+            return go;
+        }
+
+        static void DressCrusher(Transform block)
+        {
+            // Children inherit the block's scale (6.5 x 2 x 4), so sizes here are fractions of it.
+            var yellow = stripe;
+            for (int k = 0; k < 10; k++)
+            {
+                var m = k % 2 == 0 ? yellow : black;
+                foreach (float z in new[] { -0.505f, 0.505f })
+                    Shapes.Make(PrimitiveType.Cube, "Stripe", block, new Vector3(-0.45f + k * 0.1f, -0.38f, z), new Vector3(0.1f, 0.2f, 0.01f), m, false,
+                        new Vector3(0f, 0f, 25f));
+            }
+            var steel = Mats.Get("Gun_Steel", new Color(0.55f, 0.57f, 0.62f));
+            for (int k = 0; k < 6; k++)
+                LowPoly.Make(LowPoly.Cone(4), "Tooth", block, new Vector3(-0.42f + k * 0.168f, -0.58f, 0f), new Vector3(0.06f, 0.18f, 0.5f), steel,
+                    new Vector3(180f, 0f, 0f));
+            LowPoly.Make(LowPoly.Cylinder(8), "Piston", block, new Vector3(0f, 1.5f, 0f), new Vector3(0.09f, 2f, 0.14f), steel);
+        }
+
 
         /// <summary>A box positioned relative to its group (section groups sit at the course origin).</summary>
         static GameObject Block(Transform g, string name, Vector3 pos, Vector3 size, Material mat, bool collider = true,
@@ -305,6 +387,10 @@ namespace KnockbackRumble
             Block(g, "CP" + (index + 1) + "_PostL", pos + new Vector3(-half, 2f, 0f), new Vector3(0.4f, 4f, 0.4f), checkpointMat);
             Block(g, "CP" + (index + 1) + "_PostR", pos + new Vector3(half, 2f, 0f), new Vector3(0.4f, 4f, 0.4f), checkpointMat);
             Block(g, "CP" + (index + 1) + "_Top", pos + new Vector3(0f, 4.2f, 0f), new Vector3(width + 0.8f, 0.4f, 0.4f), checkpointMat, false);
+            var bulb = Mats.Unlit("CheckpointBulb", new Color(0.6f, 0.95f, 1f));
+            for (float x = -width * 0.5f; x <= width * 0.5f + 0.01f; x += 1.5f)
+                LowPoly.Make(LowPoly.Ico(0), "Bulb", g, pos + new Vector3(x, 4.45f, -0.22f), Vector3.one * 0.28f, bulb);
+            Props.Sign(g, "CHECKPOINT " + (index + 1), pos + new Vector3(0f, 5.2f, -0.25f), 0.12f, new Color(0.6f, 0.95f, 1f));
         }
 
         static void Pickup(Transform g, string id, Vector3 pos)

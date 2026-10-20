@@ -9,7 +9,7 @@ namespace KnockbackRumble
         public static void Fire(WeaponDef def, GameObject owner, Vector3 origin, Vector3 direction)
         {
             Vector3 dir = direction.sqrMagnitude < 0.0001f ? owner.transform.forward : direction.normalized;
-            FireFeel(def, owner, origin);
+            FireFeel(def, owner, origin, dir);
             switch (def.kind)
             {
                 case WeaponKind.Melee: Shove(def, owner, dir); break;
@@ -26,7 +26,7 @@ namespace KnockbackRumble
         public static void FireCosmetic(WeaponDef def, GameObject owner, Vector3 origin, Vector3 direction)
         {
             Vector3 dir = direction.sqrMagnitude < 0.0001f ? owner.transform.forward : direction.normalized;
-            FireFeel(def, owner, origin);
+            FireFeel(def, owner, origin, dir);
             switch (def.kind)
             {
                 case WeaponKind.Melee:
@@ -47,7 +47,7 @@ namespace KnockbackRumble
                         if (hit.distance < best) { best = hit.distance; end = hit.point; }
                     }
                     if (best < float.MaxValue) Fx.Puff(end, 0.35f, def.color);
-                    Fx.Tracer(origin, end, def.color);
+                    Trail(def, end);
                     break;
                 }
                 case WeaponKind.Rocket:
@@ -59,9 +59,30 @@ namespace KnockbackRumble
             }
         }
 
-        /// <summary>The bang (and a little screen kick when it's your own gun).</summary>
-        static void FireFeel(WeaponDef def, GameObject owner, Vector3 origin)
+        /// <summary>Where the last shot's barrel was (tracers start here so they come out of the gun).</summary>
+        static Vector3 muzzle;
+
+        /// <summary>The bang, the muzzle flash, and a little screen kick when it's your own gun.</summary>
+        static void FireFeel(WeaponDef def, GameObject owner, Vector3 origin, Vector3 dir)
         {
+            var visual = owner != null ? owner.GetComponent<DummyVisual>() : null;
+            muzzle = visual != null && def.kind != WeaponKind.Melee ? visual.MuzzlePoint : origin;
+            if (Vector3.Distance(muzzle, origin) > 2.5f) muzzle = origin; // tumbling or mid-animation: keep it sane
+            switch (def.kind)
+            {
+                case WeaponKind.Shotgun:
+                    Fx.Muzzle(muzzle, dir, def.color, 0.55f);
+                    Puffs.SmokeBurst(muzzle + dir * 0.4f, 4, 1.2f, 0.35f, 0.8f);
+                    break;
+                case WeaponKind.Rocket:
+                    Fx.Muzzle(muzzle, dir, def.color, 0.4f);
+                    Puffs.SmokeBurst(muzzle - dir * 1.1f, 5, 1.5f, 0.45f, 0.9f); // back-blast
+                    break;
+                case WeaponKind.Hitscan:
+                    Fx.Muzzle(muzzle, dir, def.color, def == WeaponDef.LongShot ? 0.45f : 0.22f);
+                    break;
+            }
+
             string sound = def.kind == WeaponKind.Melee ? "shove"
                          : def.kind == WeaponKind.Shotgun ? "shotgun"
                          : def.kind == WeaponKind.Rocket ? "rocket"
@@ -127,9 +148,8 @@ namespace KnockbackRumble
                     if (rb != null && rb.gameObject == owner) continue;
                     if ((hit.point - origin).sqrMagnitude < (end - origin).sqrMagnitude) end = hit.point;
                 }
-                Fx.Tracer(origin, end, def.color);
+                Fx.Tracer(muzzle, end, def.color, 0.05f, 0.08f);
             }
-            Fx.Puff(origin + dir * 0.8f, 0.9f, def.color);
         }
 
         /// <summary>True if level geometry (not other dummies) is between the shooter and the body.</summary>
@@ -142,6 +162,20 @@ namespace KnockbackRumble
                 return true;
             }
             return false;
+        }
+
+        /// <summary>The visible bullet line. The Long Shot leaves a fat glowing streak and a line of smoke.</summary>
+        static void Trail(WeaponDef def, Vector3 end)
+        {
+            if (def == WeaponDef.LongShot)
+            {
+                Fx.Tracer(muzzle, end, def.color, 0.22f, 0.45f);
+                Vector3 d = end - muzzle;
+                int n = Mathf.Min(40, Mathf.FloorToInt(d.magnitude / 1.5f));
+                for (int i = 1; i <= n; i++)
+                    Puffs.Smoke(muzzle + d * (i / (float)(n + 1)), Random.insideUnitSphere * 0.2f + Vector3.up * 0.2f, 0.22f, 0.9f);
+            }
+            else Fx.Tracer(muzzle, end, def.color);
         }
 
         static void Hitscan(WeaponDef def, GameObject owner, Vector3 origin, Vector3 dir)
@@ -159,7 +193,7 @@ namespace KnockbackRumble
                 Fx.Puff(hit.point, 0.35f, def.color);
                 break;
             }
-            Fx.Tracer(origin, end, def.color);
+            Trail(def, end);
         }
 
         /// <summary>Launches every dummy in the radius; stronger near the center. Hits the owner too (rocket jumps).</summary>

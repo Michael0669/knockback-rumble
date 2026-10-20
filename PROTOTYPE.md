@@ -146,15 +146,18 @@ Assets/KnockbackRumble/
   Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual, Contestant
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera (with aim zoom)
   Scripts/Loadout/   Loadouts (perks, gadgets, streaks, unlock levels) and Profile (level, XP, wallet)
-  Scripts/Weapons/   WeaponDef (gun balance), WeaponHolder, Weapons, Rocket, WeaponPickup (ammo crates), Fx,
+  Scripts/Weapons/   WeaponModels (gun, rocket, bomb, spike ball models), Puffs (low-poly smoke/fire/sparks/confetti),
+                     WeaponDef (gun balance), WeaponHolder, Weapons, Rocket, WeaponPickup (ammo crates), Fx,
                      Gadgets (+ Grenade, StickyMine), FallingBomb + FlyBy (Payout Streaks)
   Scripts/AI/        BotBrain
-  Scripts/Game/      ShowManager (show flow, cash, bags), MoneyBag, RaceManager (runs one event), CourseInfo,
+  Scripts/Game/      WorldLook (sun, sky, fog, bloom/color grading), ShowManager (show flow, cash, bags), MoneyBag, RaceManager (runs one event), CourseInfo,
                      HUD, MenuUI + UiSkin (menus, loadout screen), Announcer (all the jokes), Personas (voice packs), PrototypeBootstrap
   Scripts/Audio/     Sfx + SfxRunner (sound effects and music), VoiceLine, VoiceDirector (spoken lines, off for now)
   Scripts/Net/       NetSession (lobby, relay, clock), MatchController (race <-> network), SteamService,
                      SteamTransport, TcpTransport, RemoteDummy (smooths other players), NetVoice + VoicePlayer
-  Scripts/Level/     ScrapSprintBuilder (the Gauntlet), ArenaBuilder (Cash Grab, Crumble Plaza), CrumbleFloor, hazards
+  Scripts/Level/     ScrapSprintBuilder (the Gauntlet), ArenaBuilder (Cash Grab, Crumble Plaza), CrumbleFloor, hazards,
+                     Props (junk, grandstands + crowd, light towers, jumbotron, blimp, mountains, clouds)
+  Scripts/Util/      Mats (materials), LowPoly (faceted procedural meshes, saved to Meshes/ in edit mode)
 ```
 
 Not in this build yet: cosmetics to spend your wallet on, more guns / perks / streaks, more events, a lineup

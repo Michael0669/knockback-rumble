@@ -63,9 +63,26 @@ namespace KnockbackRumble
         public static Material Unlit(string name, Color color)
         {
             string key = "unlit_" + name;
-            if (cache.TryGetValue(key, out var cached) && cached != null) return cached;
+            if (cache.TryGetValue(key, out var cached) && cached != null && IsUsable(cached)) return cached;
             var shader = Shader.Find("Sprites/Default");
             if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+#if UNITY_EDITOR
+            // Level builders run in edit mode: save it as an asset so the saved scene keeps it.
+            if (!Application.isPlaying)
+            {
+                if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder(Root, "Materials");
+                string path = Folder + "/Unlit_" + name + ".mat";
+                var asset = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (asset == null)
+                {
+                    asset = shader != null ? new Material(shader) : Create(color);
+                    SetColor(asset, color);
+                    AssetDatabase.CreateAsset(asset, path);
+                }
+                cache[key] = asset;
+                return asset;
+            }
+#endif
             Material m = shader != null ? new Material(shader) : Create(color);
             SetColor(m, color);
             m.name = key;

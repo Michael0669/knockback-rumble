@@ -250,7 +250,7 @@ namespace KnockbackRumble
             if (victim == null) return;
             victim.Falls++;
             bool knockoff = attacker != null && attacker != victim;
-            if (knockoff) attacker.Knockoffs++;
+            if (knockoff) { attacker.Knockoffs++; CrowdBob.Cheer(); }
             victim.StreakCount = 0; // streaks are per life, like in the old military shooters
             if (victim.IsPlayer)
             {
@@ -394,6 +394,8 @@ namespace KnockbackRumble
             Finishers.Add(c);
 
             if (c.IsPlayer || Random.value < 0.4f) Announcer.Qualified(c.IsPlayer);
+            Puffs.Confetti(c.transform.position + Vector3.up * 2f, c.IsPlayer ? 60 : 25);
+            CrowdBob.Cheer(c.IsPlayer ? 3f : 1.5f);
             if (c.IsPlayer)
             {
                 Announcer.ShowToast("FINISHED #" + place + "!");
@@ -432,7 +434,13 @@ namespace KnockbackRumble
                 bool first = Results.Count > 0 && Results[0] == Player;
                 bool last = Results.Count > 1 && Results[Results.Count - 1] == Player;
                 bool showOver = show != null && show.ShowOver;
-                if (first) { Sfx.Ui("fanfare", 1f, 0f, 0.9f); Sfx.Ui("applause", 1f, 0f, 1.1f); }
+                if (first)
+                {
+                    Sfx.Ui("fanfare", 1f, 0f, 0.9f);
+                    Sfx.Ui("applause", 1f, 0f, 1.1f);
+                    Puffs.Confetti(Player.transform.position + Vector3.up * 3f, showOver ? 120 : 50, 11f);
+                    CrowdBob.Cheer(4f);
+                }
                 else if (showOver && last) Sfx.Ui("sad_trombone", 1f, 0f, 0.9f);
                 else Sfx.Ui("applause", 0.8f, 0f, 0.9f);
             }

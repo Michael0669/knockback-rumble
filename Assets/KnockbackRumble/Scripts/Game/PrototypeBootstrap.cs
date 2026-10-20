@@ -41,6 +41,7 @@ namespace KnockbackRumble
             unityCam.farClipPlane = 600f;
             var cam = camGo.GetComponent<ThirdPersonCamera>();
             if (cam == null) cam = camGo.AddComponent<ThirdPersonCamera>();
+            WorldLook.Apply(unityCam);
 
             var match = GetComponent<MatchController>();
             if (match == null) match = gameObject.AddComponent<MatchController>();

@@ -33,9 +33,21 @@ namespace KnockbackRumble
                 new Vector3(radius * 2f, 0.02f, radius * 2f), Mats.Get("Hazard_Red", Palette.Hazard), false).transform;
             b.marker.localScale = new Vector3(0.1f, 0.02f, 0.1f);
 
-            float size = ball ? 4.5f : 0.7f;
-            var mat = ball ? Mats.Get("Hazard_Red", Palette.Hazard) : Mats.Get("White", Palette.White);
-            b.bomb = Shapes.Make(PrimitiveType.Sphere, "Bomb", go.transform, new Vector3(0f, DropHeight, 0f), Vector3.one * size, mat, false).transform;
+            // Gary drops... what seagulls drop. The streak drops a giant spiked wrecking ball.
+            b.bomb = new GameObject("Bomb").transform;
+            b.bomb.SetParent(go.transform, false);
+            b.bomb.localPosition = new Vector3(0f, DropHeight, 0f);
+            if (ball)
+            {
+                b.bomb.localScale = Vector3.one * 4.5f;
+                WeaponModels.SpikeBall(b.bomb, Mats.Get("SpikeBall_Body", new Color(0.22f, 0.22f, 0.25f)),
+                    Mats.Get("Gun_Steel", new Color(0.55f, 0.57f, 0.62f)));
+            }
+            else
+            {
+                b.bomb.localScale = Vector3.one * 0.9f;
+                WeaponModels.GaryBomb(b.bomb);
+            }
             b.bomb.gameObject.SetActive(false);
         }
 
@@ -56,6 +68,7 @@ namespace KnockbackRumble
                 if (!whistled) { whistled = true; Sfx.At("bomb_whistle", target + Vector3.up * 6f, 1f, 0.1f, 80f); }
                 float t = Mathf.Clamp01((age - fallStart) / FallTime);
                 bomb.localPosition = new Vector3(0f, Mathf.Lerp(DropHeight, ball ? 2f : 0.4f, t * t), 0f);
+                if (ball) bomb.Rotate(200f * Time.deltaTime, 0f, 90f * Time.deltaTime, Space.Self);
             }
 
             if (!exploded && age >= delay)
