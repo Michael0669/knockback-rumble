@@ -41,7 +41,7 @@ namespace KnockbackRumble
 
     public static class NetProtocol
     {
-        public const int Version = 1;
+        public const int Version = 2;
         public const int MaxPlayers = 8;
         public const int DirectPort = 7777;
         public const byte NoId = 255;

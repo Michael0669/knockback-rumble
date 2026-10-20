@@ -32,8 +32,12 @@ namespace KnockbackRumble
             new Color(0.9f, 0.15f, 0.2f),   // red
         };
 
-        /// <summary>Fill empty spots with bots in online races.</summary>
-        public bool FillWithBots = true;
+        /// <summary>Fill empty spots with bots in online races (the setting lives on the session so everyone sees it).</summary>
+        public bool FillWithBots
+        {
+            get => NetSession.Instance == null || NetSession.Instance.FillBots;
+            set { if (NetSession.Instance != null) NetSession.Instance.SetFillBots(value); }
+        }
         public int OfflineBots = 7;
         public float BotSkillMin = 0.35f, BotSkillMax = 0.85f;
         public string OfflineName = "Dummy 69";

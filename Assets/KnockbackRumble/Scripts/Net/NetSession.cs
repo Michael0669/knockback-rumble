@@ -49,6 +49,16 @@ namespace KnockbackRumble
         public int PingMs { get; private set; }
         public string LastError { get; set; }
         public string LocalName = "Dummy";
+
+        /// <summary>Host's "fill empty spots with bots" setting (shared so everyone's lobby shows it).</summary>
+        public bool FillBots { get; private set; } = true;
+
+        public void SetFillBots(bool on)
+        {
+            if (FillBots == on) return;
+            FillBots = on;
+            if (IsHost && State == SessionState.Connected) BroadcastRoster();
+        }
         public readonly List<NetPeer> Peers = new List<NetPeer>();
 
         /// <summary>(sender, type, reader) for every match message.</summary>
@@ -505,6 +515,7 @@ namespace KnockbackRumble
         {
             var w = writer.Begin(MsgType.Roster).Byte((byte)Peers.Count);
             foreach (var p in Peers) w.ULong(p.Id).Str(p.Name).Byte(p.Color).Bool(p.IsHost);
+            w.Bool(FillBots);
             Send(w);
             RosterChanged?.Invoke();
         }
@@ -515,6 +526,7 @@ namespace KnockbackRumble
             var fresh = new List<NetPeer>(n);
             for (int i = 0; i < n; i++)
                 fresh.Add(new NetPeer { Id = r.ULong(), Name = r.Str(), Color = r.Byte(), IsHost = r.Bool() });
+            FillBots = r.Bool();
 
             var gone = new List<ulong>();
             foreach (var old in Peers)

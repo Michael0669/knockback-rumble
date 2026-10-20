@@ -19,10 +19,11 @@ namespace KnockbackRumble
         {
             if (big != null) return;
             white = Texture2D.whiteTexture;
-            big = new GUIStyle(GUI.skin.label) { fontSize = 64, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            mid = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            small = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.UpperLeft };
-            center = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+            // Same fonts as the menus (falls back to Unity's default if the art is missing).
+            big = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 68, alignment = TextAnchor.MiddleCenter };
+            mid = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 32, alignment = TextAnchor.MiddleCenter };
+            small = new GUIStyle(GUI.skin.label) { font = UiSkin.BodyBold, fontSize = 20, alignment = TextAnchor.UpperLeft };
+            center = new GUIStyle(GUI.skin.label) { font = UiSkin.Body, fontSize = 22, alignment = TextAnchor.MiddleCenter, wordWrap = true };
         }
 
         void OnGUI()
@@ -30,6 +31,7 @@ namespace KnockbackRumble
             var race = RaceManager.Instance;
             if (race == null || race.State == RaceManager.Phase.Idle) return;
             if (!shownHelp) { shownHelp = true; helpUntil = Time.time + 12f; } // controls reminder for the first race
+            UiSkin.Ensure();
             EnsureStyles();
 
             float scale = Screen.height / RefHeight;
@@ -64,7 +66,7 @@ namespace KnockbackRumble
             if (Announcer.Line == null || Time.time - Announcer.LineTime > 3.8f) return;
             string text = Announcer.Speaker + ":  " + Announcer.Line;
             var r = new Rect(W / 2f - 520f, 92f, 1040f, 70f);
-            Box(r, new Color(0f, 0f, 0f, 0.55f));
+            UiSkin.Pill(r, UiSkin.PillDark);
             Label(r, text, center, Announcer.Speaker == Announcer.Trina ? new Color(1f, 0.6f, 0.8f) : new Color(1f, 0.85f, 0.4f));
         }
 
@@ -77,13 +79,13 @@ namespace KnockbackRumble
             float dent = p.Dent.Dent;
             Color dc = Color.Lerp(Color.white, Color.yellow, Mathf.Clamp01(dent / 60f));
             dc = Color.Lerp(dc, Palette.Hazard, Mathf.Clamp01((dent - 60f) / 90f));
-            Box(new Rect(30f, H - 150f, 260f, 120f), new Color(0f, 0f, 0f, 0.5f));
+            UiSkin.Panel(new Rect(22f, H - 160f, 276f, 140f));
             Label(new Rect(30f, H - 150f, 260f, 30f), "DENT", mid, Color.white);
             Label(new Rect(30f, H - 120f, 260f, 80f), Mathf.RoundToInt(dent) + "%", big, dc);
 
             // Weapon, bottom right
             var w = p.Weapons;
-            Box(new Rect(W - 330f, H - 150f, 300f, 120f), new Color(0f, 0f, 0f, 0.5f));
+            UiSkin.Panel(new Rect(W - 338f, H - 160f, 316f, 140f));
             if (w.Held != null)
             {
                 Label(new Rect(W - 330f, H - 145f, 300f, 40f), w.Held.name.ToUpperInvariant(), mid, w.Held.color);
@@ -120,7 +122,7 @@ namespace KnockbackRumble
         void DrawResults(RaceManager race, float W, float H)
         {
             var r = new Rect(W / 2f - 330f, H * 0.2f, 660f, 120f + race.Results.Count * 38f);
-            Box(r, new Color(0f, 0f, 0f, 0.75f));
+            UiSkin.Panel(new Rect(r.x - 10f, r.y - 10f, r.width + 20f, r.height + 30f));
             bool youQ = race.IsQualified(race.Player);
             Label(new Rect(r.x, r.y + 10f, r.width, 60f), youQ ? "QUALIFIED!" : "ELIMINATED", big, youQ ? Palette.Gold : Palette.Hazard);
 
@@ -149,7 +151,7 @@ namespace KnockbackRumble
                 "WASD move   SPACE jump (mash to recover)   CTRL/C dive\n" +
                 "LMB fire   E / F / RMB shove   ESC menu\n" +
                 "Fire a rocket at your feet + jump = rocket jump";
-            Box(new Rect(20f, 20f, 560f, 84f), new Color(0f, 0f, 0f, 0.5f));
+            UiSkin.Panel(new Rect(14f, 14f, 580f, 100f));
             var s = new GUIStyle(small) { fontSize = 18 };
             s.normal.textColor = Color.white;
             GUI.Label(new Rect(30f, 26f, 550f, 80f), help, s);

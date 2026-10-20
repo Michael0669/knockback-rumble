@@ -102,12 +102,13 @@ app, and it's expected.
 ```
 Packages/com.rlabrecque.steamworks.net/   Steamworks.NET (MIT license) - talks to Steam
 Assets/KnockbackRumble/
+  Art/Resources/UI/  menu art + fonts (made by Tools/make_ui_art.py; fonts are OFL / Apache licensed)
   Editor/            Knockback Rumble menu, voice generator, build step (writes steam_appid.txt next to builds)
   Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual, Contestant
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera
   Scripts/Weapons/   WeaponDef (balance), WeaponHolder, Weapons, Rocket, WeaponPickup, Fx
   Scripts/AI/        BotBrain
-  Scripts/Game/      RaceManager, HUD, MenuUI, Announcer (all the jokes), Personas (voice packs), PrototypeBootstrap
+  Scripts/Game/      RaceManager, HUD, MenuUI + UiSkin (menus and their look), Announcer (all the jokes), Personas (voice packs), PrototypeBootstrap
   Scripts/Audio/     VoiceLine, VoiceDirector
   Scripts/Net/       NetSession (lobby, relay, clock), MatchController (race <-> network), SteamService,
                      SteamTransport, TcpTransport, RemoteDummy (smooths other players), NetVoice + VoicePlayer

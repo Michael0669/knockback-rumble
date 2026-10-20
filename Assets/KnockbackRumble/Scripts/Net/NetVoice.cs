@@ -57,6 +57,8 @@ namespace KnockbackRumble
             }
         }
 
+        public void ToggleMic() { if (Net.Online) MicOn = !MicOn; }
+
         public bool IsTalking(ulong peer) => lastTalk.TryGetValue(peer, out float t) && Time.unscaledTime - t < 0.35f;
 
         void Update()
@@ -72,7 +74,7 @@ namespace KnockbackRumble
             steamReady = SteamService.Instance != null && SteamService.Instance.Ready;
 
             var kb = Keyboard.current;
-            if (kb != null && kb.mKey.wasPressedThisFrame && Net.Online) MicOn = !MicOn;
+            if (kb != null && kb.mKey.wasPressedThisFrame && !IsTyping()) ToggleMic();
 
             SetRecording(Available && MicOn);
             if (recording) Capture();
@@ -85,6 +87,9 @@ namespace KnockbackRumble
                 kv.Value.Follow(dummy != null ? dummy.transform : null);
             }
         }
+
+        // Don't toggle the mic while someone is typing an "m" into a text box.
+        static bool IsTyping() => GUIUtility.keyboardControl != 0;
 
         void SetRecording(bool on)
         {
