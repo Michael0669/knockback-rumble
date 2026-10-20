@@ -101,8 +101,9 @@ namespace KnockbackRumble
         {
             var match = MatchController.Instance;
             var race = RaceManager.Instance;
-            bool playing = match != null && match.InMatch && race != null && race.State == RaceManager.Phase.Racing;
-            string want = playing ? "music_game" : "music_menu";
+            // Menus: lounge loop. In a show: the show loop on loading and results screens, the game loop while playing.
+            bool inShow = match != null && match.InMatch && race != null;
+            string want = !inShow ? "music_menu" : race.State == RaceManager.Phase.Racing ? "music_game" : "music_show";
 
             if (want != currentTrack)
             {
@@ -124,7 +125,7 @@ namespace KnockbackRumble
             {
                 var s = music[i];
                 float goal = i == activeMusic ? target : 0f;
-                s.volume = Mathf.MoveTowards(s.volume, goal, Time.unscaledDeltaTime * 0.8f);
+                s.volume = Mathf.MoveTowards(s.volume, goal, Time.unscaledDeltaTime * 0.4f); // ~1.5 s crossfade
                 if (i != activeMusic && s.volume <= 0.001f && s.isPlaying) s.Stop();
             }
         }

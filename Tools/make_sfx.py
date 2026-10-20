@@ -460,8 +460,42 @@ def music_menu():
     save("music_menu", song, 0.6)
 
 
+def music_show():
+    """In-show loop for loading and results screens: bright, bouncy, a bit of drumroll tension. 8 bars, 112 bpm."""
+    bpm = 112
+    beat = 60 / bpm
+    roots = ["F1", "F1", "D2", "D2", "A#1", "A#1", "C2", "C2"]
+    pattern = [(0, 0, 0.4), (0.5, 12, 0.25), (1, 0, 0.4), (1.5, 7, 0.25), (2, 0, 0.4), (2.5, 12, 0.25), (3, 7, 0.4), (3.5, 5, 0.25)]
+    bass = bass_line(roots, bpm, pattern, "square", 650)
+    chords = [["A4", "C5", "F5"], ["A4", "C5", "F5"], ["A4", "D5", "F5"], ["A4", "D5", "F5"],
+              ["A#4", "D5", "F5"], ["A#4", "D5", "F5"], ["G4", "C5", "E5"], ["A#4", "C5", "E5"]]
+    stabs = chord_stabs(chords, bpm, [0, 1.5, 3], "saw", 2200, 0.4, 0.9)
+    bell_notes = [("C6", 0, 0.5), ("A5", 0.75, 0.5), ("F5", 1.5, 1), ("A5", 3, 0.5),
+                  ("D6", 8, 0.5), ("A5", 8.75, 0.5), ("F5", 9.5, 1), ("D6", 11, 0.5),
+                  ("D6", 16, 0.5), ("A#5", 16.75, 0.5), ("F5", 17.5, 1), ("A#5", 19, 0.5),
+                  ("E6", 24, 0.5), ("C6", 24.75, 0.5), ("G5", 25.5, 1), ("A#5", 27, 0.5), ("C6", 28, 2)]
+    lead = np.zeros(int(SR * 32 * beat) + 1)
+    for n, st, ln in bell_notes:
+        b = bell(note(n), ln * beat + 0.4, 5)
+        i = int(SR * st * beat)
+        seg = b[:len(lead) - i]
+        lead[i:i + len(seg)] += seg
+    dr = drums(8, bpm, 0.0, True)
+    # Snare roll building into the loop point (last two beats)
+    roll = np.zeros_like(dr)
+    for k in range(16):
+        t0 = (30 + k * 0.125) * beat
+        hit = bp(noise(0.06), 1200, 7000) * decay(0.06, 40) * (0.3 + 0.7 * k / 15)
+        i = int(SR * t0)
+        seg = hit[:len(roll) - i]
+        roll[i:i + len(seg)] += seg
+    n = len(dr)
+    song = mix(dr * 0.8, roll[:n] * 0.6, bass[:n] * 0.5, stabs[:n] * 0.28, lead[:n] * 0.3)[:n]
+    save("music_show", song, 0.62)
+
+
 if __name__ == "__main__":
     print("Writing sounds to", os.path.normpath(OUT))
     ui(); show(); weapons(); hits(); movement(); cash(); gadgets(); streaks(); hazards()
-    music_game(); music_menu()
+    music_game(); music_menu(); music_show()
     print("Done.")

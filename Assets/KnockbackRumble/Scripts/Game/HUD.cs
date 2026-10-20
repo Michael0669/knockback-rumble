@@ -530,6 +530,12 @@ namespace KnockbackRumble
             int oldSize = style.fontSize;
             if (font != null) style.font = font;
             if (size > 0) style.fontSize = size;
+            // Too wide for its box (long names)? Shrink it to fit.
+            if (!style.wordWrap && style.fontSize > 0)
+            {
+                float w = style.CalcSize(new GUIContent(text)).x;
+                if (w > r.width && w > 0f) style.fontSize = Mathf.Max(10, Mathf.FloorToInt(style.fontSize * r.width / w));
+            }
             var old = style.normal.textColor;
             if (shadow)
             {

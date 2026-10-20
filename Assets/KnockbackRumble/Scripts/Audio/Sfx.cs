@@ -21,7 +21,7 @@ namespace KnockbackRumble
         /// <summary>Per-sound loudness so the set sits together (1 = as generated).</summary>
         static readonly Dictionary<string, float> Gains = new Dictionary<string, float>
         {
-            { "go_horn", 0.55f }, { "end_buzzer", 0.5f }, { "count_beep", 0.45f }, { "hit_heavy", 0.75f },
+            { "go_horn", 0.22f }, { "end_buzzer", 0.5f }, { "count_beep", 0.45f }, { "hit_heavy", 0.75f },
             { "explosion", 0.9f }, { "shotgun", 0.8f }, { "jump", 0.35f }, { "double_jump", 0.4f }, { "land", 0.45f },
             { "dive", 0.5f }, { "coin", 0.5f }, { "cash_lose", 0.55f }, { "tile_crack", 0.7f }, { "tile_fall", 0.6f },
             { "beep", 0.4f }, { "bounce", 0.6f }, { "ui_click", 0.5f }, { "ui_equip", 0.6f }, { "applause", 0.6f },
