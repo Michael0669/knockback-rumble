@@ -296,9 +296,9 @@ namespace KnockbackRumble
 
         // ---------- Cosmetics ----------
 
-        static int Key(CosmeticItem i) => (int)i.slot * 256 + i.id;
+        static int ItemKey(CosmeticItem i) => (int)i.slot * 256 + i.id;
 
-        public static bool Owns(CosmeticItem i) => i == null || i.price <= 0 || D.owned.Contains(Key(i));
+        public static bool Owns(CosmeticItem i) => i == null || i.price <= 0 || D.owned.Contains(ItemKey(i));
 
         /// <summary>Buy an item with wallet cash. False if you can't afford it.</summary>
         public static bool Buy(CosmeticItem i)
@@ -307,7 +307,7 @@ namespace KnockbackRumble
             var d = D;
             if (d.wallet < i.price) return false;
             d.wallet -= i.price;
-            d.owned.Add(Key(i));
+            d.owned.Add(ItemKey(i));
             Save();
             return true;
         }
