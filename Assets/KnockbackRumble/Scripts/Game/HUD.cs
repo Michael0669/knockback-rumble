@@ -27,6 +27,15 @@ namespace KnockbackRumble
             right = new GUIStyle(left) { alignment = TextAnchor.MiddleRight };
         }
 
+        static float hitMarkerTime = -99f, hitMarkerSize;
+
+        /// <summary>Flash the hit marker (you hit someone). Bigger hits = bigger, redder marker.</summary>
+        public static void HitMarker(float knock)
+        {
+            hitMarkerTime = Time.time;
+            hitMarkerSize = Mathf.Clamp01(knock / 25f);
+        }
+
         void OnGUI()
         {
             var race = RaceManager.Instance;
@@ -63,6 +72,7 @@ namespace KnockbackRumble
                 DrawPlayerPanel(race, show, p, W, H);
                 DrawToast(W, H);
                 if (!MenuUI.Paused && p != null && !p.Eliminated && !scoped) DrawCrosshair(W, H);
+                if (!MenuUI.Paused && p != null) DrawHitMarker(W, H);
                 if (p != null && p.Eliminated) DrawEliminated(W, H);
             }
             if (race.State == RaceManager.Phase.Countdown) DrawCountdown(race, show, W, H);
@@ -250,6 +260,24 @@ namespace KnockbackRumble
         {
             Box(new Rect(W / 2f - 1.5f, H / 2f - 10f, 3f, 20f), Color.white);
             Box(new Rect(W / 2f - 10f, H / 2f - 1.5f, 20f, 3f), Color.white);
+        }
+
+        void DrawHitMarker(float W, float H)
+        {
+            float age = Time.time - hitMarkerTime;
+            if (age > 0.18f) return;
+            float a = 1f - age / 0.18f;
+            float gap = 9f + hitMarkerSize * 6f + age * 40f, len = 10f + hitMarkerSize * 8f;
+            Color col = Color.Lerp(Color.white, UiSkin.Red, hitMarkerSize);
+            col.a = a;
+            var old = GUI.matrix;
+            Vector2 c = new Vector2(W / 2f, H / 2f);
+            for (int i = 0; i < 4; i++)
+            {
+                GUI.matrix = old * UiSkin.Around(c, 45f + 90f * i, 1f);
+                Box(new Rect(c.x - 1.5f, c.y - gap - len, 3f, len), col);
+            }
+            GUI.matrix = old;
         }
 
         void DrawScope(float W, float H)

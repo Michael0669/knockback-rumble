@@ -9,6 +9,7 @@ namespace KnockbackRumble
         public static void Fire(WeaponDef def, GameObject owner, Vector3 origin, Vector3 direction)
         {
             Vector3 dir = direction.sqrMagnitude < 0.0001f ? owner.transform.forward : direction.normalized;
+            FireFeel(def, owner, origin);
             switch (def.kind)
             {
                 case WeaponKind.Melee: Shove(def, owner, dir); break;
@@ -25,6 +26,7 @@ namespace KnockbackRumble
         public static void FireCosmetic(WeaponDef def, GameObject owner, Vector3 origin, Vector3 direction)
         {
             Vector3 dir = direction.sqrMagnitude < 0.0001f ? owner.transform.forward : direction.normalized;
+            FireFeel(def, owner, origin);
             switch (def.kind)
             {
                 case WeaponKind.Melee:
@@ -55,6 +57,24 @@ namespace KnockbackRumble
                     Shotgun(def, owner, origin, dir, false);
                     break;
             }
+        }
+
+        /// <summary>The bang (and a little screen kick when it's your own gun).</summary>
+        static void FireFeel(WeaponDef def, GameObject owner, Vector3 origin)
+        {
+            string sound = def.kind == WeaponKind.Melee ? "shove"
+                         : def.kind == WeaponKind.Shotgun ? "shotgun"
+                         : def.kind == WeaponKind.Rocket ? "rocket"
+                         : def == WeaponDef.LongShot ? "sniper" : "pistol";
+            float range = def == WeaponDef.LongShot ? 140f : def.kind == WeaponKind.Shotgun ? 70f : 45f;
+            Sfx.At(sound, origin, 1f, 0.07f, range);
+
+            var c = owner != null ? owner.GetComponent<Contestant>() : null;
+            if (c == null || !c.IsPlayer) return;
+            if (def.kind == WeaponKind.Shotgun) { ThirdPersonCamera.Shake(0.35f); ThirdPersonCamera.Kick(4f); }
+            else if (def == WeaponDef.LongShot) { ThirdPersonCamera.Shake(0.3f); ThirdPersonCamera.Kick(3f); }
+            else if (def.kind == WeaponKind.Rocket) ThirdPersonCamera.Shake(0.2f);
+            else if (def.kind != WeaponKind.Melee) ThirdPersonCamera.Shake(0.08f);
         }
 
         static void Shove(WeaponDef def, GameObject owner, Vector3 dir)

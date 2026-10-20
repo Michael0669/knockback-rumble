@@ -26,6 +26,7 @@ namespace KnockbackRumble
             SteamService.Ensure();
             NetSession.Ensure();
             NetVoice.Ensure();
+            Sfx.Ensure();
 
             if (GetComponent<RaceManager>() == null) gameObject.AddComponent<RaceManager>();
             if (GetComponent<ShowManager>() == null) gameObject.AddComponent<ShowManager>();

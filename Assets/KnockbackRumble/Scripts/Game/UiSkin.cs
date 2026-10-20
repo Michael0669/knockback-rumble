@@ -232,6 +232,7 @@ namespace KnockbackRumble
             GUI.backgroundColor = tint;
             bool clicked = GUI.Button(r, GUIContent.none, button);
             GUI.backgroundColor = oldBg;
+            if (clicked) Sfx.Ui("ui_click");
 
             bool dark = DarkText(tint);
             Color col = dark ? Ink : Cream;
@@ -281,7 +282,7 @@ namespace KnockbackRumble
         /// <summary>An on/off switch; the whole row is clickable.</summary>
         public static bool Switch(Rect clickArea, Rect knob, bool on)
         {
-            if (GUI.Button(clickArea, GUIContent.none, GUIStyle.none)) on = !on;
+            if (GUI.Button(clickArea, GUIContent.none, GUIStyle.none)) { on = !on; Sfx.Ui("ui_click"); }
             Image(knob, on ? SwitchOn : SwitchOff);
             return on;
         }

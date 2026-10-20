@@ -90,6 +90,8 @@ namespace KnockbackRumble
 
             // Fire (hold to keep shooting)
             bool fire = (mouse != null && mouse.leftButton.isPressed) || (pad != null && pad.rightTrigger.isPressed);
+            bool firePressed = (mouse != null && mouse.leftButton.wasPressedThisFrame) || (pad != null && pad.rightTrigger.wasPressedThisFrame);
+            if (firePressed && weapons.Held != null && weapons.Ammo == 0 && !weapons.Disabled) Sfx.Ui("empty_click");
             if (fire && weapons.CanFire)
             {
                 weapons.TryFire(AimDirection());

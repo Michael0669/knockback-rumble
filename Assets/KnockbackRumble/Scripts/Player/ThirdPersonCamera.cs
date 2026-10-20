@@ -33,6 +33,34 @@ namespace KnockbackRumble
         Camera unityCam;
         float currentDistance = -1f;
 
+        // ---- Game feel: screen shake and FOV kick ----
+        public static ThirdPersonCamera Main { get; private set; }
+        float trauma, fovKick;
+        float seed;
+
+        void Awake() { Main = this; seed = Random.value * 100f; }
+        void OnDestroy() { if (Main == this) Main = null; }
+
+        /// <summary>Shake the screen. 0.2 = a bump, 0.5 = a big hit, 1 = the world is ending.</summary>
+        public static void Shake(float amount)
+        {
+            if (Main != null) Main.trauma = Mathf.Clamp01(Main.trauma + amount);
+        }
+
+        /// <summary>Shake scaled by how close something happened to the camera.</summary>
+        public static void ShakeAt(Vector3 pos, float amount, float range)
+        {
+            if (Main == null) return;
+            float d = Vector3.Distance(Main.transform.position, pos);
+            if (d < range) Shake(amount * (1f - d / range));
+        }
+
+        /// <summary>Punch the field of view out for a moment (getting launched, big shots).</summary>
+        public static void Kick(float degrees)
+        {
+            if (Main != null) Main.fovKick = Mathf.Max(Main.fovKick, degrees);
+        }
+
         public float Yaw { get; set; }
         public float Pitch { get; set; } = 12f;
 
@@ -57,7 +85,8 @@ namespace KnockbackRumble
             // Zoom
             float goal = Aiming ? 1f : 0f;
             ZoomAmount = Mathf.MoveTowards(ZoomAmount, goal, zoomSpeed * Time.deltaTime * 0.5f);
-            float fov = Mathf.Lerp(baseFov, AimFov, ZoomAmount);
+            fovKick = Mathf.MoveTowards(fovKick, 0f, Time.deltaTime * 30f);
+            float fov = Mathf.Lerp(baseFov, AimFov, ZoomAmount) + fovKick * (1f - ZoomAmount * 0.8f);
             if (unityCam != null) unityCam.fieldOfView = fov;
             float wantDistance = Mathf.Lerp(distance, aimDistance, ZoomAmount);
             if (currentDistance < 0f) currentDistance = wantDistance;
@@ -91,6 +120,19 @@ namespace KnockbackRumble
 
             transform.position = pivot + dir * Mathf.Max(0.4f, best - 0.05f);
             transform.rotation = rot;
+
+            // Shake: smooth noise, strength = trauma squared so small bumps stay subtle.
+            trauma = Mathf.MoveTowards(trauma, 0f, Time.deltaTime * 1.6f);
+            if (trauma > 0f)
+            {
+                float k = trauma * trauma * (1f - ZoomAmount * 0.6f);
+                float tt = Time.time * 22f;
+                float nx = Mathf.PerlinNoise(seed, tt) * 2f - 1f;
+                float ny = Mathf.PerlinNoise(seed + 10f, tt) * 2f - 1f;
+                float nr = Mathf.PerlinNoise(seed + 20f, tt) * 2f - 1f;
+                transform.position += transform.right * nx * 0.35f * k + transform.up * ny * 0.35f * k;
+                transform.rotation *= Quaternion.Euler(ny * 2.5f * k, nx * 2.5f * k, nr * 5f * k);
+            }
         }
     }
 }

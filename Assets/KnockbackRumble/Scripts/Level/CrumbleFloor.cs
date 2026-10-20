@@ -25,7 +25,13 @@ namespace KnockbackRumble
         byte[] state;   // 0 solid, 1 warning (flash on), 2 warning (flash off), 3 falling, 4 gone
         Material solid, warn;
         bool running, cached;
-        float start;
+        float start, nextCrackSound, nextFallSound;
+
+        static bool NearCamera(Vector3 p, float range)
+        {
+            var cam = Camera.main;
+            return cam != null && (cam.transform.position - p).sqrMagnitude < range * range;
+        }
 
         void Cache()
         {
@@ -124,6 +130,11 @@ namespace KnockbackRumble
                 }
                 if (t < f)
                 {
+                    if (state[i] == 0 && Time.time >= nextCrackSound && NearCamera(home[i], 16f))
+                    {
+                        nextCrackSound = Time.time + 0.15f;
+                        Sfx.At("tile_crack", home[i], 1f, 0.15f, 25f);
+                    }
                     byte s = flashOn ? (byte)1 : (byte)2;
                     if (state[i] != s && rends[i] != null) rends[i].sharedMaterial = flashOn ? warn : solid;
                     state[i] = s;
@@ -135,6 +146,11 @@ namespace KnockbackRumble
                 {
                     state[i] = 3;
                     if (cols[i] != null) cols[i].enabled = false;
+                    if (Time.time >= nextFallSound && NearCamera(home[i], 22f))
+                    {
+                        nextFallSound = Time.time + 0.2f;
+                        Sfx.At("tile_fall", home[i], 1f, 0.15f, 35f);
+                    }
                     if (rends[i] != null) rends[i].sharedMaterial = warn;
                 }
                 float drop = t - f;

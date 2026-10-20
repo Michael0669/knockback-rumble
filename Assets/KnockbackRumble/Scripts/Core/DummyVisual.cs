@@ -18,6 +18,12 @@ namespace KnockbackRumble
         Vector3 tumbleAxis = Vector3.right;
         bool wasStunned;
 
+        // Sounds and squash
+        bool prevGrounded = true, prevDiving, whistled;
+        float prevVy, airTime, squash;
+        bool IsPlayer => contestant != null && contestant.IsPlayer;
+        Contestant contestant;
+
         public void Build(Color bodyColor)
         {
             motor = GetComponent<DummyMotor>();
@@ -85,6 +91,7 @@ namespace KnockbackRumble
             float dt = Time.deltaTime;
             Vector3 v = motor.Velocity;
             float speed = new Vector3(v.x, 0f, v.z).magnitude;
+            MovementFeel(v, dt);
 
             if (motor.Stunned)
             {
@@ -130,6 +137,52 @@ namespace KnockbackRumble
             }
 
             wasStunned = motor.Stunned;
+        }
+
+        void MovementFeel(Vector3 v, float dt)
+        {
+            if (contestant == null) contestant = GetComponent<Contestant>();
+            bool grounded = motor.Grounded;
+            Vector3 pos = transform.position;
+            float loud = IsPlayer ? 1f : 0.7f;
+
+            if (prevGrounded && !grounded && v.y > 4f)
+                Sfx.At("jump", pos, loud, 0.08f, 22f);
+            else if (!grounded && !prevGrounded && !motor.Stunned && v.y - prevVy > 5f && v.y < 14f)
+                Sfx.At("double_jump", pos, loud, 0.08f, 22f);
+
+            if (!grounded) airTime += dt;
+            if (grounded && !prevGrounded)
+            {
+                if (airTime > 0.3f)
+                {
+                    float impact = Mathf.Clamp01(-prevVy / 20f);
+                    Sfx.At("land", pos, loud * (0.5f + impact), 0.1f, 22f);
+                    squash = Mathf.Max(squash, 0.35f + impact * 0.4f);
+                    if (IsPlayer && impact > 0.6f) ThirdPersonCamera.Shake(0.15f);
+                }
+                airTime = 0f;
+            }
+
+            if (motor.Diving && !prevDiving) Sfx.At("dive", pos, loud, 0.08f, 22f);
+
+            // Falling off the map: slide whistle, once per fall.
+            if (!grounded && v.y < -8f && pos.y < -2f && !whistled)
+            {
+                whistled = true;
+                Sfx.At("fall_whistle", pos, IsPlayer ? 1.2f : 0.9f, 0.06f, 60f);
+            }
+            if (grounded || pos.y > 0f) whistled = false;
+
+            // Squash on landing, stretch while flying up fast.
+            squash = Mathf.MoveTowards(squash, 0f, dt * 3f);
+            float stretch = !grounded && !motor.Stunned ? Mathf.Clamp01((v.y - 6f) / 12f) * 0.15f : 0f;
+            float s = squash;
+            model.localScale = new Vector3(1f + s * 0.35f - stretch * 0.5f, 1f - s * 0.4f + stretch, 1f + s * 0.35f - stretch * 0.5f);
+
+            prevGrounded = grounded;
+            prevDiving = motor.Diving;
+            prevVy = v.y;
         }
 
         void SetLimbs(float legLx, float legRx, float armLx, float armRx, float spread)

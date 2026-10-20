@@ -14,7 +14,7 @@ namespace KnockbackRumble
         GameObject owner;
         Vector3 target;
         float delay, age;
-        bool ball, cosmetic, exploded;
+        bool ball, cosmetic, exploded, whistled;
         Transform marker, bomb;
 
         public static void Spawn(GameObject owner, Vector3 target, float delay, bool ball, bool cosmetic)
@@ -53,6 +53,7 @@ namespace KnockbackRumble
             if (age >= fallStart && bomb != null)
             {
                 bomb.gameObject.SetActive(true);
+                if (!whistled) { whistled = true; Sfx.At("bomb_whistle", target + Vector3.up * 6f, 1f, 0.1f, 80f); }
                 float t = Mathf.Clamp01((age - fallStart) / FallTime);
                 bomb.localPosition = new Vector3(0f, Mathf.Lerp(DropHeight, ball ? 2f : 0.4f, t * t), 0f);
             }

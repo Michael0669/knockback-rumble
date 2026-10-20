@@ -90,6 +90,7 @@ namespace KnockbackRumble
         {
             SetAvailable(false);
             timer = respawnTime;
+            Sfx.At("reload", transform.position + Vector3.up, 1f, 0.05f, 30f);
             if (c == null || !c.IsLocal) return;
             bool gadget = Scavenges(c);
             c.Weapons.Refill(gadget);

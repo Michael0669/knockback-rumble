@@ -21,6 +21,7 @@ namespace KnockbackRumble
         Rigidbody rb;
         Material normalMat, warnMat;
         readonly HitCooldown cooldown = new HitCooldown();
+        bool wasDown;
 
         void Awake()
         {
@@ -61,6 +62,14 @@ namespace KnockbackRumble
             rb.MovePosition(new Vector3(p.x, y, p.z));
 
             if (blockRenderer != null) blockRenderer.sharedMaterial = warning ? warnMat : normalMat;
+            bool down = t >= waitUp + slam && t < waitUp + slam + waitDown;
+            if (down && !wasDown)
+            {
+                Vector3 bottom = new Vector3(p.x, downY - size.y * 0.5f, p.z);
+                Sfx.At("crusher", bottom, 1f, 0.08f, 40f);
+                ThirdPersonCamera.ShakeAt(bottom, 0.3f, 14f);
+            }
+            wasDown = down;
             if (slamming) Squish(y);
         }
 

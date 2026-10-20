@@ -86,7 +86,7 @@ namespace KnockbackRumble
                 enteredAt = Now;
             }
 
-            if (screen != Screen.Lobby && screen != Screen.Race) showVolumes = false;
+            if (screen == Screen.Connecting) showVolumes = false;
             if (screen == Screen.Race && !Paused) { showVolumes = false; showLoadout = false; }
             if (screen == Screen.Connecting) showLoadout = false;
             bool popup = showVolumes || showLoadout;
@@ -194,6 +194,7 @@ namespace KnockbackRumble
             if (showTools) DrawTools(session, H);
 
             if (UiSkin.Button(new Rect(W - 200f, H - 86f, 160f, 60f), "QUIT", UiSkin.Red, null, 26)) Quit();
+            if (UiSkin.Button(new Rect(W - 200f, H - 160f, 160f, 60f), "VOLUME", UiSkin.Dark, null, 26)) showVolumes = true;
         }
 
         void DrawTools(NetSession session, float H)
@@ -407,7 +408,7 @@ namespace KnockbackRumble
             UiSkin.Image(new Rect(cx - tw / 2f, ty, tw, th), UiSkin.TitlePaused);
 
             float pw = 600f, px = cx - pw / 2f, py = ty + th + 24f;
-            float ph = 84f + 108f + 88f + (online && host ? 100f : 0f) + (online ? 88f : 0f) + 92f + 56f;
+            float ph = 84f + 108f + 88f + (online && host ? 100f : 0f) + 88f + 92f + 56f;
             UiSkin.Panel(new Rect(px, py, pw, ph));
             UiSkin.Text(new Rect(px, py + 26f, pw, 34f), online ? "The show keeps going while you're in here!" : "Take a breather.",
                 UiSkin.Body, 23, UiSkin.Cream, TextAnchor.MiddleCenter, false);
@@ -426,11 +427,8 @@ namespace KnockbackRumble
                 y += 100f;
             }
 
-            if (online)
-            {
-                if (UiSkin.Button(new Rect(px + 40f, y, pw - 80f, 76f), "VOICE VOLUMES", UiSkin.Dark, null, 30)) showVolumes = true;
-                y += 88f;
-            }
+            if (UiSkin.Button(new Rect(px + 40f, y, pw - 80f, 76f), "VOLUME", UiSkin.Dark, null, 30)) showVolumes = true;
+            y += 88f;
 
             string leave = !online ? "QUIT TO MENU" : host ? "END GAME FOR EVERYONE" : "LEAVE GAME";
             if (UiSkin.Button(new Rect(px + 40f, y, pw - 80f, 76f), leave, UiSkin.Red, null, 30))
@@ -449,58 +447,67 @@ namespace KnockbackRumble
             }
         }
 
-        /// <summary>Pop-up with an "all voices" slider and one slider per other player (0-200%).</summary>
+        /// <summary>Pop-up with music / effects sliders, an "all voices" slider and one per other player.</summary>
         void DrawVolumes(NetSession session, float W, float H, float oy)
         {
             var voice = NetVoice.Instance;
             UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.55f));
 
             int others = 0;
-            foreach (var p in session.Peers) if (p.Id != session.LocalId) others++;
+            if (session != null)
+                foreach (var p in session.Peers) if (p.Id != session.LocalId) others++;
+            bool online = Net.Online;
 
             float cx = W / 2f, pw = 720f;
-            float ph = 200f + 92f + Mathf.Max(1, others) * 78f + 100f;
+            float ph = 140f + 2f * 78f + (online ? 60f + 92f + Mathf.Max(1, others) * 78f : 0f) + 100f;
             var panel = new Rect(cx - pw / 2f, oy + Mathf.Max(60f, (1080f - ph) / 2f), pw, ph);
             UiSkin.Panel(panel);
-            UiSkin.Heading(new Rect(panel.x, panel.y + 26f, pw, 50f), "VOICE VOLUMES", 42, UiSkin.Gold, TextAnchor.MiddleCenter);
-            UiSkin.Text(new Rect(panel.x, panel.y + 80f, pw, 30f), "Turn anyone up, down, or all the way off.  Saved for next time.",
-                UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleCenter, false);
+            UiSkin.Heading(new Rect(panel.x, panel.y + 26f, pw, 50f), "VOLUME", 42, UiSkin.Gold, TextAnchor.MiddleCenter);
+            UiSkin.Text(new Rect(panel.x, panel.y + 80f, pw, 30f), "Saved for next time.", UiSkin.BodyBold, 20, UiSkin.Muted,
+                TextAnchor.MiddleCenter, false);
 
-            if (voice == null || !voice.Available)
+            float y = panel.y + 130f;
+            VolumeRow(new Rect(panel.x + 40f, y, pw - 80f, 66f), null, "MUSIC", UiSkin.Teal, Sfx.MusicVolume, v => Sfx.MusicVolume = v, false, 1f);
+            y += 78f;
+            VolumeRow(new Rect(panel.x + 40f, y, pw - 80f, 66f), null, "EFFECTS", UiSkin.Teal, Sfx.EffectsVolume, v => Sfx.EffectsVolume = v, false, 1f);
+            y += 78f;
+
+            if (online)
             {
-                UiSkin.Text(new Rect(panel.x, panel.y + 130f, pw, 40f), "Voice chat needs Steam running on every player's PC.",
-                    UiSkin.Body, 22, UiSkin.Cream, TextAnchor.MiddleCenter, false);
-            }
-
-            float y = panel.y + 140f;
-            if (voice != null)
-            {
-                VolumeRow(new Rect(panel.x + 40f, y, pw - 80f, 70f), null, "ALL VOICES", UiSkin.Gold, voice.MasterVolume,
-                    v => voice.SetMasterVolume(v), false);
-                y += 92f;
-
-                foreach (var p in session.Peers)
+                UiSkin.Heading(new Rect(panel.x + 40f, y + 10f, pw - 80f, 40f), "VOICE CHAT", 28, UiSkin.LabelBlue);
+                y += 60f;
+                if (voice == null || !voice.Available)
                 {
-                    if (p.Id == session.LocalId) continue;
-                    var color = MatchController.HumanColors[p.Color % MatchController.HumanColors.Length];
-                    ulong id = p.Id;
-                    VolumeRow(new Rect(panel.x + 40f, y, pw - 80f, 66f), UiSkin.Avatar, p.Name, color, voice.GetVolume(id),
-                        v => voice.SetVolume(id, v), voice.IsTalking(id));
-                    y += 78f;
+                    UiSkin.Text(new Rect(panel.x, y, pw, 60f), "Voice chat needs Steam running on every player's PC.", UiSkin.Body, 22,
+                        UiSkin.Cream, TextAnchor.MiddleCenter, false);
                 }
-                if (others == 0)
+                else
                 {
-                    UiSkin.Text(new Rect(panel.x, y, pw, 60f), "Nobody else is here yet.", UiSkin.Body, 22, UiSkin.Muted,
-                        TextAnchor.MiddleCenter, false);
-                    y += 78f;
+                    VolumeRow(new Rect(panel.x + 40f, y, pw - 80f, 70f), null, "ALL VOICES", UiSkin.Gold, voice.MasterVolume,
+                        v => voice.SetMasterVolume(v), false);
+                    y += 92f;
+                    foreach (var p in session.Peers)
+                    {
+                        if (p.Id == session.LocalId) continue;
+                        var color = MatchController.HumanColors[p.Color % MatchController.HumanColors.Length];
+                        ulong id = p.Id;
+                        VolumeRow(new Rect(panel.x + 40f, y, pw - 80f, 66f), UiSkin.Avatar, p.Name, color, voice.GetVolume(id),
+                            v => voice.SetVolume(id, v), voice.IsTalking(id));
+                        y += 78f;
+                    }
+                    if (others == 0)
+                        UiSkin.Text(new Rect(panel.x, y, pw, 60f), "Nobody else is here yet.", UiSkin.Body, 22, UiSkin.Muted,
+                            TextAnchor.MiddleCenter, false);
                 }
             }
 
             if (UiSkin.Button(new Rect(cx - 150f, panel.yMax - 92f, 300f, 66f), "DONE", UiSkin.Yellow, null, 30)) showVolumes = false;
         }
 
-        static void VolumeRow(Rect r, Texture2D icon, string label, Color color, float value, System.Action<float> set, bool talking)
+        static void VolumeRow(Rect r, Texture2D icon, string label, Color color, float value, System.Action<float> set, bool talking,
+            float max = -1f)
         {
+            if (max <= 0f) max = NetVoice.MaxVolume;
             UiSkin.Card(r);
             float x = r.x + 18f;
             if (icon != null)
@@ -512,7 +519,7 @@ namespace KnockbackRumble
             UiSkin.Heading(new Rect(x, r.y, 220f, r.height), label, 26, icon == null ? color : UiSkin.Cream);
 
             var slider = new Rect(r.x + 290f, r.y + (r.height - 30f) / 2f, r.width - 290f - 110f, 30f);
-            float nv = UiSkin.Slider(slider, value, 0f, NetVoice.MaxVolume, value <= 0.001f ? UiSkin.Red : UiSkin.Green);
+            float nv = UiSkin.Slider(slider, value, 0f, max, value <= 0.001f ? UiSkin.Red : UiSkin.Green);
             if (!Mathf.Approximately(nv, value)) set(nv);
 
             string pct = nv <= 0.001f ? "OFF" : Mathf.RoundToInt(nv * 100f) + "%";
@@ -705,6 +712,7 @@ namespace KnockbackRumble
                 if (!locked && !on && GUI.Button(r, GUIContent.none, GUIStyle.none))
                 {
                     Equip(editing, loadoutSlot, o.id);
+                    Sfx.Ui("ui_equip");
                     Profile.SetLoadout(editing);
                     editing = Profile.Loadout.Copy();
                 }

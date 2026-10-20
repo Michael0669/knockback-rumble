@@ -11,6 +11,7 @@ namespace KnockbackRumble
         float age;
         Renderer body;
         Material normal, flash;
+        bool lastOn;
 
         public static void Spawn(Contestant c, ushort id, Vector3 pos, Vector3 vel, bool cosmetic)
         {
@@ -40,6 +41,11 @@ namespace KnockbackRumble
             Gadgets.Register(id, go);
         }
 
+        void OnCollisionEnter(Collision collision)
+        {
+            if (collision.relativeVelocity.magnitude > 3f) Sfx.At("bounce", transform.position, 1f, 0.15f, 25f);
+        }
+
         void Update()
         {
             age += Time.deltaTime;
@@ -47,6 +53,8 @@ namespace KnockbackRumble
             float left = Gadgets.GrenadeFuse - age;
             bool on = left < 0.8f ? Mathf.Repeat(age * 10f, 1f) < 0.5f : Mathf.Repeat(age * 3f, 1f) < 0.5f;
             if (body != null) body.sharedMaterial = on ? flash : normal;
+            if (on && !lastOn) Sfx.At("beep", transform.position, 1f, 0f, 25f);
+            lastOn = on;
 
             if (cosmetic)
             {

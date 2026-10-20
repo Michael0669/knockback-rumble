@@ -81,6 +81,7 @@ namespace KnockbackRumble
         {
             Carrier = c;
             Carried = c != null;
+            if (c != null) Sfx.At("bag_grab", transform.position, 1f, 0.05f, 40f);
             if (beam != null) beam.SetActive(!Carried);
             if (c != null && c.IsPlayer) Announcer.ShowToast("YOU GOT A BAG!  $" + ShowManager.BagPerSecond + " a second. Don't get hit!");
         }
@@ -89,6 +90,7 @@ namespace KnockbackRumble
         public void Drop(Vector3 target, Contestant dropper)
         {
             if (Carrier != null && Carrier.IsPlayer) Announcer.ShowToast("BAG DROPPED!");
+            if (Carried) Sfx.At("bag_drop", transform.position, 1f, 0.05f, 40f);
             from = transform.position;
             to = target;
             dropStart = Time.time;

@@ -29,6 +29,10 @@ Spoken lines (announcers and bot barks) are switched off for now. To bring them 
 `VoiceDirector.Enabled = true` in `Scripts/Audio/VoiceDirector.cs`, then run
 **Knockback Rumble → Voices → Generate Placeholder Voices**.
 
+**Sound:** every sound effect and both music loops are made from scratch by `Tools/make_sfx.py` (no samples, no
+licenses). To swap one for a real recording, save it as a 16-bit mono WAV and rename it to
+`Art/Resources/SFX/<name>.bytes`. Music and effects volume are in **VOLUME** (main menu, lobby, pause menu).
+
 Before every event a **loading screen** shows the rules, the controls, your loadout and the cash standings
 for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countdown starts.
 
@@ -133,6 +137,7 @@ app, and it's expected.
 ```
 Packages/com.rlabrecque.steamworks.net/   Steamworks.NET (MIT license) - talks to Steam
 Assets/KnockbackRumble/
+  Art/Resources/SFX/ sound effects and music (WAV files saved as .bytes, made by Tools/make_sfx.py)
   Art/Resources/UI/  menu art (PNG files saved as .bytes) + fonts (made by Tools/make_ui_art.py; fonts are OFL / Apache licensed)
   Editor/            Knockback Rumble menu, voice generator, build step (writes steam_appid.txt next to builds)
   Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual, Contestant
@@ -143,7 +148,7 @@ Assets/KnockbackRumble/
   Scripts/AI/        BotBrain
   Scripts/Game/      ShowManager (show flow, cash, bags), MoneyBag, RaceManager (runs one event), CourseInfo,
                      HUD, MenuUI + UiSkin (menus, loadout screen), Announcer (all the jokes), Personas (voice packs), PrototypeBootstrap
-  Scripts/Audio/     VoiceLine, VoiceDirector
+  Scripts/Audio/     Sfx + SfxRunner (sound effects and music), VoiceLine, VoiceDirector (spoken lines, off for now)
   Scripts/Net/       NetSession (lobby, relay, clock), MatchController (race <-> network), SteamService,
                      SteamTransport, TcpTransport, RemoteDummy (smooths other players), NetVoice + VoicePlayer
   Scripts/Level/     ScrapSprintBuilder (the Gauntlet), ArenaBuilder (Cash Grab, Crumble Plaza), CrumbleFloor, hazards

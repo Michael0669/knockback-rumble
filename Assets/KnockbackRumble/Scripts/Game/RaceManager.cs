@@ -53,6 +53,7 @@ namespace KnockbackRumble
         public readonly List<Contestant> Eliminations = new List<Contestant>();
 
         bool saidCountdown;
+        int lastBeep;
         CrumbleFloor crumble;
 
         void Awake() => Instance = this;
@@ -91,6 +92,7 @@ namespace KnockbackRumble
             Clock = raceStart - Net.Time;
             State = Phase.Countdown;
             saidCountdown = false;
+            lastBeep = 99;
 
             if (kind == EventKind.Crumble && course != null)
             {
@@ -141,8 +143,12 @@ namespace KnockbackRumble
                 case Phase.Countdown:
                     Clock = RaceStartTime - Net.Time;
                     if (!saidCountdown && Clock <= 3f) { Announcer.Countdown(); saidCountdown = true; }
+                    int secs = Mathf.CeilToInt(Clock);
+                    if (secs >= 1 && secs <= 3 && secs < lastBeep) { lastBeep = secs; Sfx.Ui("count_beep"); }
                     if (Clock <= 0f)
                     {
+                        Sfx.Ui("go_horn");
+                        ThirdPersonCamera.Shake(0.2f);
                         // Every machine starts on the shared clock, so nobody waits on lag to hear "GO".
                         State = Phase.Racing;
                         foreach (var c in Contestants) if (c != null) c.Motor.InputLocked = false;
@@ -238,6 +244,11 @@ namespace KnockbackRumble
             bool knockoff = attacker != null && attacker != victim;
             if (knockoff) attacker.Knockoffs++;
             victim.StreakCount = 0; // streaks are per life, like in the old military shooters
+            if (victim.IsPlayer)
+            {
+                Sfx.Ui("splat");
+                ThirdPersonCamera.Shake(0.35f);
+            }
 
             if (State == Phase.Racing)
             {
@@ -247,6 +258,7 @@ namespace KnockbackRumble
                     var earned = attacker.AddStreakKnockoff();
                     if (earned != Streak.None && attacker.IsPlayer)
                     {
+                        Sfx.Ui("streak_ready");
                         var info = Loadouts.StreakInfo(earned);
                         Announcer.ShowToast(info.name.ToUpperInvariant() + " READY!  Press Q");
                     }
@@ -257,7 +269,11 @@ namespace KnockbackRumble
                     victim.Eliminated = true;
                     Eliminations.Add(victim);
                     if (victim.IsLocal) victim.Weapons.Disabled = true;
-                    if (victim.IsPlayer) Announcer.ShowToast("ELIMINATED!  Welcome to the Losers' Lounge");
+                    if (victim.IsPlayer)
+                    {
+                        Announcer.ShowToast("ELIMINATED!  Welcome to the Losers' Lounge");
+                        Sfx.Ui("sad_trombone", 1f, 0f, 0.4f);
+                    }
                 }
 
                 if (Net.IsHost && ShowManager.Instance != null) ShowManager.Instance.HostOnFell(victim, knockoff ? attacker : null);
@@ -287,6 +303,7 @@ namespace KnockbackRumble
         public void HandleLaunched(Contestant victim, Contestant attacker, float knock, bool hazard)
         {
             if (victim == null) return;
+            LaunchFeel(victim, knock);
             if (State == Phase.Racing && Net.IsHost && ShowManager.Instance != null)
                 ShowManager.Instance.HostOnLaunched(victim, attacker, knock, hazard);
 
@@ -298,6 +315,21 @@ namespace KnockbackRumble
                 Announcer.BigLaunch(victim.IsPlayer, attacker != null && attacker.IsPlayer, hazard);
         }
 
+        /// <summary>Thwack, debris and (if it's you) screen shake. Runs on every machine.</summary>
+        static void LaunchFeel(Contestant victim, float knock)
+        {
+            float k = Mathf.Clamp01(knock / 30f);
+            Vector3 at = victim.transform.position + Vector3.up;
+            Sfx.At(knock > 14f ? "hit_heavy" : "hit_light", at, 0.6f + 0.5f * k, 0.1f, 50f);
+            if (knock > 22f) Sfx.At("boing", at, 0.7f, 0.1f, 50f);
+            if (knock > 9f) Fx.Burst(at, victim.Color, 4 + Mathf.RoundToInt(k * 6f), 5f + knock * 0.3f, 0.16f);
+            if (victim.IsPlayer)
+            {
+                ThirdPersonCamera.Shake(0.12f + k * 0.5f);
+                ThirdPersonCamera.Kick(3f + k * 9f);
+            }
+        }
+
         // ---------- Payout Streaks ----------
 
         /// <summary>Someone called in a streak (runs on every machine).</summary>
@@ -306,6 +338,8 @@ namespace KnockbackRumble
             var info = Loadouts.StreakInfo(streak);
             if (caller == null || info == null) return;
             if (!caller.IsPlayer) Announcer.ShowToast(caller.DisplayName + " called in a " + info.name.ToUpperInvariant() + "!");
+            Sfx.Ui("siren");
+            if (streak == KnockbackRumble.Streak.GaryStrike) Sfx.Ui("seagull", 1f, 0.05f, 0.5f);
             Announcer.Streak(streak, caller.IsPlayer);
         }
 
@@ -316,7 +350,11 @@ namespace KnockbackRumble
             if (Kind != EventKind.Gauntlet || !c.IsLocal || cp.index <= c.CheckpointIndex) return;
             c.CheckpointIndex = cp.index;
             c.RespawnPoint = cp.transform.position;
-            if (c.IsPlayer) Announcer.ShowToast("Checkpoint, baby!");
+            if (c.IsPlayer)
+            {
+                Announcer.ShowToast("Checkpoint, baby!");
+                Sfx.Ui("checkpoint");
+            }
         }
 
         public void ReachFinish(Contestant c)
@@ -347,7 +385,13 @@ namespace KnockbackRumble
             Finishers.Add(c);
 
             if (c.IsPlayer || Random.value < 0.4f) Announcer.Qualified(c.IsPlayer);
-            if (c.IsPlayer) Announcer.ShowToast("FINISHED #" + place + "!");
+            if (c.IsPlayer)
+            {
+                Announcer.ShowToast("FINISHED #" + place + "!");
+                Sfx.Ui(place <= 3 ? "fanfare" : "applause");
+                if (place <= 3) Sfx.Ui("applause", 0.8f, 0f, 0.4f);
+            }
+            else Sfx.At("applause", c.transform.position, 0.5f, 0.05f, 40f);
             if (c.Persona != null) c.Bark(VoiceLine.Pick(c.Persona.Finished));
         }
 
@@ -372,6 +416,17 @@ namespace KnockbackRumble
             var show = ShowManager.Instance;
             if (show != null) show.OnRoundResults(this);
             if (Player != null) Announcer.RaceOver(Results.Count > 0 && Results[0] == Player);
+
+            Sfx.Ui("end_buzzer");
+            if (Player != null)
+            {
+                bool first = Results.Count > 0 && Results[0] == Player;
+                bool last = Results.Count > 1 && Results[Results.Count - 1] == Player;
+                bool showOver = show != null && show.ShowOver;
+                if (first) { Sfx.Ui("fanfare", 1f, 0f, 0.9f); Sfx.Ui("applause", 1f, 0f, 1.1f); }
+                else if (showOver && last) Sfx.Ui("sad_trombone", 1f, 0f, 0.9f);
+                else Sfx.Ui("applause", 0.8f, 0f, 0.9f);
+            }
         }
 
         /// <summary>1-based standing in the event results (0 if not listed).</summary>

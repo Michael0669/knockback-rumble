@@ -216,7 +216,13 @@ namespace KnockbackRumble
 
             var race = RaceManager.Instance;
             var player = race != null ? race.Player : null;
-            if (player != null && player.NetId == id && applied != 0) AddPopup(applied, reason);
+            if (player != null && player.NetId == id && applied != 0)
+            {
+                AddPopup(applied, reason);
+                if (reason == Reason.Fall) Sfx.Ui("cash_lose");
+                else if (reason == Reason.Bag || reason == Reason.Standing) Sfx.Ui("coin", 1f, 0.05f);
+                else if (reason != Reason.PainPay) Sfx.Ui("cash");
+            }
             return applied;
         }
 

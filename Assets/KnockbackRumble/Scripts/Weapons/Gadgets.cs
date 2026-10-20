@@ -56,6 +56,7 @@ namespace KnockbackRumble
                 default:
                     return;
             }
+            Sfx.At(gadget == Gadget.StickyMine ? "mine_drop" : "throw", pos, 1f, 0.08f, 35f);
             if (Net.Online)
                 Net.Session.Send(writer.Begin(MsgType.Gadget).Byte(c.NetId).Byte((byte)gadget).UShort(id).Vec3(pos).Vec3(vel));
         }
@@ -64,6 +65,7 @@ namespace KnockbackRumble
         public static void OnRemoteGadget(Contestant c, Gadget gadget, ushort id, Vector3 pos, Vector3 vel)
         {
             if (c == null || c.IsLocal) return;
+            Sfx.At(gadget == Gadget.StickyMine ? "mine_drop" : "throw", pos, 1f, 0.08f, 35f);
             if (gadget == Gadget.BouncerGrenade) Grenade.Spawn(c, id, pos, vel, true);
             else if (gadget == Gadget.StickyMine) StickyMine.Spawn(c, id, pos, true);
         }

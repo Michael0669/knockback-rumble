@@ -13,6 +13,7 @@ namespace KnockbackRumble
         float age;
         Renderer lamp;
         Material off, on;
+        bool wasArmed;
 
         public static void Spawn(Contestant c, ushort id, Vector3 pos, bool cosmetic)
         {
@@ -37,6 +38,8 @@ namespace KnockbackRumble
         {
             age += Time.deltaTime;
             bool armed = age >= Gadgets.MineArm;
+            if (armed && !wasArmed) Sfx.At("mine_arm", transform.position, 1f, 0f, 25f);
+            wasArmed = armed;
             if (lamp != null) lamp.sharedMaterial = armed && Mathf.Repeat(age * 2f, 1f) < 0.5f ? on : off;
 
             if (cosmetic)

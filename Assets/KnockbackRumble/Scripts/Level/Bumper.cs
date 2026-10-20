@@ -13,6 +13,7 @@ namespace KnockbackRumble
         {
             var body = collision.collider.GetComponentInParent<DentBody>();
             if (body == null || !cooldown.TryHit(body, 0.3f)) return;
+            Sfx.At("bumper", transform.position, 1f, 0.1f, 35f);
             Vector3 dir = Shapes.Flat(body.transform.position - transform.position);
             body.Hit(dir, knockback, dent, null, "Bumper", 0.3f);
         }

@@ -50,6 +50,16 @@ namespace KnockbackRumble
         /// <param name="minLift">Minimum upward share of the launch direction.</param>
         public void Hit(Vector3 direction, float baseKnock, float dentAdd, GameObject attacker, string weapon, float minLift = 0.25f)
         {
+            // You hit someone: tick + hit marker.
+            if (attacker != null && attacker != gameObject)
+            {
+                var shooter = attacker.GetComponent<Contestant>();
+                if (shooter != null && shooter.IsPlayer)
+                {
+                    Sfx.Ui("hitmarker");
+                    HUD.HitMarker(baseKnock);
+                }
+            }
             if (!IsLocal)
             {
                 // This dummy lives on another machine. If one of OUR dummies caused the hit, tell its owner.
