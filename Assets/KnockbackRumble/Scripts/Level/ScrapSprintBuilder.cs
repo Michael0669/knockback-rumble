@@ -387,7 +387,7 @@ namespace KnockbackRumble
                 rotor.localRotation = Quaternion.Euler(0f, 0f, -90f); // local Y = wind direction (+X)
                 LowPoly.Make(LowPoly.Cylinder(10), "Hub", rotor, Vector3.zero, new Vector3(0.9f, 0.6f, 0.9f), Kit.Girder);
                 for (int b = 0; b < 4; b++)
-                    Kit.Box(rotor, "Blade", Quaternion.Euler(0f, b * 90f, 0f) * new Vector3(1.4f, 0f, 0f), new Vector3(2.4f, 0.06f, 0.8f), blade,
+                    Kit.Box(rotor, "Blade", Quaternion.Euler(0f, b * 90f, 0f) * new Vector3(1.4f, 0f, 0f), new Vector3(2.4f, 0.06f, 0.8f), blade, false,
                         new Vector3(20f, b * 90f, 0f));
                 fans.Add(rotor);
             }
@@ -480,7 +480,7 @@ namespace KnockbackRumble
             Block(g, "LordDookington", p + new Vector3(0f, 1.4f, 0f), new Vector3(1.6f, 2.8f, 1.6f), potty);
             Kit.Box(g, "Roof", p + new Vector3(0f, 2.9f, 0f), new Vector3(1.75f, 0.2f, 1.75f), dark);
             Kit.Box(g, "Door", p + new Vector3(0f, 1.3f, -0.81f), new Vector3(1.2f, 2.3f, 0.03f), dark);
-            Kit.Box(g, "Moon", p + new Vector3(0f, 2.15f, -0.83f), new Vector3(0.28f, 0.28f, 0.02f), gold, new Vector3(0f, 0f, 45f));
+            Kit.Box(g, "Moon", p + new Vector3(0f, 2.15f, -0.83f), new Vector3(0.28f, 0.28f, 0.02f), gold, false, new Vector3(0f, 0f, 45f));
             Kit.Box(g, "Handle", p + new Vector3(0.45f, 1.3f, -0.84f), new Vector3(0.06f, 0.25f, 0.04f), Kit.Steel);
             LowPoly.Make(LowPoly.Cylinder(10), "HatBrim", g, p + new Vector3(0f, 3.05f, 0f), new Vector3(1.7f, 0.1f, 1.7f), black);
             LowPoly.Make(LowPoly.Cylinder(10), "Hat", g, p + new Vector3(0f, 3.55f, 0f), new Vector3(1.05f, 1f, 1.05f), black);
