@@ -6,17 +6,18 @@ using UnityEngine;
 namespace KnockbackRumble.EditorTools
 {
     /// <summary>
-    /// Menu: Knockback Rumble > Build Scrap Sprint Scene
-    /// Creates a fresh scene with the greybox course and the game objects, saves it to
-    /// Assets/KnockbackRumble/Scenes/ScrapSprint.unity and makes it the first build scene.
-    /// Safe to run again after changing ScrapSprintBuilder.cs; it rebuilds from scratch.
+    /// Menu: Knockback Rumble > Build Show Scene
+    /// Creates a fresh scene with every event arena (The Gauntlet, Cash Grab, Crumble Plaza)
+    /// and the game objects, saves it to Assets/KnockbackRumble/Scenes/ScrapSprint.unity and
+    /// makes it the first build scene. Safe to run again after changing the builders; it
+    /// rebuilds from scratch.
     /// </summary>
     public static class KnockbackRumbleMenu
     {
         const string SceneFolder = "Assets/KnockbackRumble/Scenes";
         const string ScenePath = SceneFolder + "/ScrapSprint.unity";
 
-        [MenuItem("Knockback Rumble/Build Scrap Sprint Scene", false, 0)]
+        [MenuItem("Knockback Rumble/Build Show Scene", false, 0)]
         public static void BuildScrapSprint()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -24,9 +25,12 @@ namespace KnockbackRumble.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
             ScrapSprintBuilder.Build(null);
+            ArenaBuilder.BuildCashGrab(null);
+            ArenaBuilder.BuildCrumble(null);
 
             var game = new GameObject("Game");
             game.AddComponent<RaceManager>();
+            game.AddComponent<ShowManager>();
             game.AddComponent<HUD>();
             game.AddComponent<PrototypeBootstrap>();
 
@@ -47,7 +51,7 @@ namespace KnockbackRumble.EditorTools
             Debug.Log("[Knockback Rumble] Built " + ScenePath + ". Press Play.");
         }
 
-        [MenuItem("Knockback Rumble/Open Scrap Sprint Scene", false, 1)]
+        [MenuItem("Knockback Rumble/Open Show Scene", false, 1)]
         public static void OpenScrapSprint()
         {
             if (!System.IO.File.Exists(ScenePath))

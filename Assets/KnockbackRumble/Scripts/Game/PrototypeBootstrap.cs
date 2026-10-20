@@ -3,8 +3,8 @@ using UnityEngine;
 namespace KnockbackRumble
 {
     /// <summary>
-    /// Entry point. On Play it finds (or builds) the course, starts Steam and the
-    /// network session, sets up the camera, and shows the main menu. Races are started
+    /// Entry point. On Play it finds (or builds) the event arenas, starts Steam and the
+    /// network session, sets up the camera, and shows the main menu. Shows are started
     /// from the menu (offline vs bots, or online through the lobby).
     /// </summary>
     public class PrototypeBootstrap : MonoBehaviour
@@ -17,14 +17,18 @@ namespace KnockbackRumble
         void Start()
         {
             Application.runInBackground = true; // keep the network running when the window isn't focused
-            var course = CourseInfo.Current;
+            // Every event needs its arena. Older scenes only have the Gauntlet, so build what's missing.
+            var course = CourseInfo.Find(EventKind.Gauntlet);
             if (course == null) course = ScrapSprintBuilder.Build(null);
+            if (CourseInfo.Find(EventKind.CashGrab) == null) ArenaBuilder.BuildCashGrab(null);
+            if (CourseInfo.Find(EventKind.Crumble) == null) ArenaBuilder.BuildCrumble(null);
 
             SteamService.Ensure();
             NetSession.Ensure();
             NetVoice.Ensure();
 
             if (GetComponent<RaceManager>() == null) gameObject.AddComponent<RaceManager>();
+            if (GetComponent<ShowManager>() == null) gameObject.AddComponent<ShowManager>();
             if (GetComponent<HUD>() == null) gameObject.AddComponent<HUD>();
             if (GetComponent<MenuUI>() == null) gameObject.AddComponent<MenuUI>();
 

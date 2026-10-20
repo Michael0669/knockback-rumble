@@ -4,7 +4,7 @@ namespace KnockbackRumble
 {
     /// <summary>
     /// Main menu, lobby ("The Green Room"), connecting screen, pause menu ("Commercial
-    /// Break") and the small online status strip shown during races.
+    /// Break"), the LOADOUT screen, and the small online status strip shown during shows.
     /// Laid out on a 1600x1080 minimum canvas that scales with the window; the art and
     /// helpers live in UiSkin. Layout matches the mockups made by Tools/mockup.py.
     /// </summary>
@@ -26,6 +26,9 @@ namespace KnockbackRumble
         string portField = NetProtocol.DirectPort.ToString();
         bool showTools;
         bool showVolumes;   // the VOICE VOLUMES pop-up
+        bool showLoadout;   // the LOADOUT screen
+        int loadoutSlot;    // which slot the LOADOUT screen is editing
+        Loadout editing;
         Screen lastScreen = Screen.Main;
         float enteredAt;   // when the current screen appeared (drives the slide-in)
 
@@ -84,17 +87,20 @@ namespace KnockbackRumble
             }
 
             if (screen != Screen.Lobby && screen != Screen.Race) showVolumes = false;
-            if (screen == Screen.Race && !Paused) showVolumes = false;
+            if (screen == Screen.Race && !Paused) { showVolumes = false; showLoadout = false; }
+            if (screen == Screen.Connecting) showLoadout = false;
+            bool popup = showVolumes || showLoadout;
 
             if (screen == Screen.Race)
             {
                 if (Net.Online) DrawOnlineStrip(session, W);
                 if (Paused)
                 {
-                    GUI.enabled = !showVolumes;
+                    GUI.enabled = !popup;
                     DrawPause(match, W, H, oy);
                     GUI.enabled = true;
                     if (showVolumes) DrawVolumes(session, W, H, oy);
+                    else if (showLoadout) DrawLoadout(W, H, oy);
                 }
                 return;
             }
@@ -108,7 +114,7 @@ namespace KnockbackRumble
             GUI.matrix = baseMatrix * Matrix4x4.Translate(new Vector3(0f, (1f - UiSkin.EaseOutBack(intro)) * 60f, 0f));
             GUI.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * Mathf.Clamp01(intro * 1.6f));
 
-            GUI.enabled = !showVolumes;
+            GUI.enabled = !popup;
             switch (screen)
             {
                 case Screen.Connecting: DrawConnecting(session, W, oy); break;
@@ -119,7 +125,10 @@ namespace KnockbackRumble
 
             GUI.matrix = baseMatrix;
             GUI.color = baseColor;
+            if (screen == Screen.Main && !popup && string.IsNullOrEmpty(session.LastError))
+                DrawProfileBar(new Rect(W - 220f - 470f, H - 102f, 470f, 92f));
             if (showVolumes) DrawVolumes(session, W, H, oy);
+            else if (showLoadout) DrawLoadout(W, H, oy);
         }
 
         // =====================================================================
@@ -151,12 +160,14 @@ namespace KnockbackRumble
                 session.HostSteam();
             }
 
-            if (UiSkin.Button(new Rect(px + 40f, py + 266f, 600f, 88f), "PLAY OFFLINE", UiSkin.Dark,
-                    "You vs " + match.OfflineBots + " bots", 36))
+            if (UiSkin.Button(new Rect(px + 40f, py + 266f, 292f, 88f), "PLAY OFFLINE", UiSkin.Dark,
+                    "You vs " + match.OfflineBots + " bots", 32))
             {
                 match.OfflineName = CleanName();
                 match.StartOffline();
             }
+            if (UiSkin.Button(new Rect(px + 348f, py + 266f, 292f, 88f), "LOADOUT", UiSkin.Teal, "Level " + Profile.Level, 32))
+                OpenLoadout();
 
             var status = new Rect(px + 40f, py + 370f, 600f, 42f);
             UiSkin.Pill(status, UiSkin.PillDark);
@@ -266,10 +277,11 @@ namespace KnockbackRumble
             UiSkin.Heading(new Rect(rx + 40f, ry + 26f, 400f, 44f), "THE SHOW", 38, UiSkin.Cream);
 
             int dummies = session.FillBots ? MatchController.RaceSize : session.Peers.Count;
-            float share = RaceManager.Instance != null ? RaceManager.Instance.qualifyShare : 0.625f;
-            int qualify = Mathf.Clamp(Mathf.RoundToInt(dummies * share), 1, Mathf.Max(1, dummies));
-            UiSkin.Text(new Rect(rx + 40f, ry + 82f, 440f, 32f), "Round 1:  Scrap Sprint (race)", UiSkin.Body, 23, UiSkin.Cream, TextAnchor.MiddleLeft, false);
-            UiSkin.Text(new Rect(rx + 40f, ry + 116f, 440f, 32f), dummies + " dummies  -  top " + qualify + " qualify", UiSkin.Body, 23,
+            string lineup = "";
+            for (int i = 0; i < ShowManager.Lineup.Length; i++)
+                lineup += (i > 0 ? "  >  " : "") + Events.Title(ShowManager.Lineup[i]);
+            UiSkin.Text(new Rect(rx + 40f, ry + 82f, 440f, 32f), lineup, UiSkin.Body, 20, UiSkin.Cream, TextAnchor.MiddleLeft, false);
+            UiSkin.Text(new Rect(rx + 40f, ry + 116f, 440f, 32f), dummies + " dummies  -  most cash wins", UiSkin.Body, 23,
                 UiSkin.Muted, TextAnchor.MiddleLeft, false);
 
             if (session.IsHost)
@@ -298,7 +310,7 @@ namespace KnockbackRumble
                 var startRect = new Rect(rx + 32f, ry + 392f, rw - 64f, 120f);
                 var m = GUI.matrix;
                 GUI.matrix = m * UiSkin.Around(startRect.center, 0f, Pulse());
-                bool start = UiSkin.Button(startRect, "START THE SHOW", UiSkin.Yellow, "Everyone in the lobby races", 46);
+                bool start = UiSkin.Button(startRect, "START THE SHOW", UiSkin.Yellow, "3 events, everyone in the lobby plays", 46);
                 GUI.matrix = m;
                 if (start) match.HostStartRace();
             }
@@ -315,8 +327,9 @@ namespace KnockbackRumble
 
             if (UiSkin.Button(new Rect(rx + 32f, ry + 540f, rw - 64f, 72f), "LEAVE LOBBY", UiSkin.Red, null, 28)) session.Leave(null);
 
-            DrawMicBar(new Rect(cx - 410f, oy + 884f, 610f, 56f), voice);
-            if (UiSkin.Button(new Rect(cx + 214f, oy + 880f, 196f, 62f), "VOLUMES", UiSkin.Dark, null, 26)) showVolumes = true;
+            DrawMicBar(new Rect(cx - 740f, oy + 884f, 860f, 56f), voice);
+            if (UiSkin.Button(new Rect(cx + 140f, oy + 880f, 280f, 62f), "VOLUMES", UiSkin.Dark, null, 26)) showVolumes = true;
+            if (UiSkin.Button(new Rect(cx + 440f, oy + 880f, 300f, 62f), "LOADOUT", UiSkin.Teal, null, 26)) OpenLoadout();
         }
 
         void DrawPlayerCard(Rect r, NetPeer p, NetSession session, NetVoice voice)
@@ -394,14 +407,17 @@ namespace KnockbackRumble
             UiSkin.Image(new Rect(cx - tw / 2f, ty, tw, th), UiSkin.TitlePaused);
 
             float pw = 600f, px = cx - pw / 2f, py = ty + th + 24f;
-            float ph = 84f + 108f + (online && host ? 100f : 0f) + (online ? 88f : 0f) + 92f + 56f;
+            float ph = 84f + 108f + 88f + (online && host ? 100f : 0f) + (online ? 88f : 0f) + 92f + 56f;
             UiSkin.Panel(new Rect(px, py, pw, ph));
-            UiSkin.Text(new Rect(px, py + 26f, pw, 34f), online ? "The race keeps going while you're in here!" : "Take a breather.",
+            UiSkin.Text(new Rect(px, py + 26f, pw, 34f), online ? "The show keeps going while you're in here!" : "Take a breather.",
                 UiSkin.Body, 23, UiSkin.Cream, TextAnchor.MiddleCenter, false);
 
             float y = py + 84f;
             if (UiSkin.Button(new Rect(px + 40f, y, pw - 80f, 92f), "RESUME", UiSkin.Yellow, null, 40)) SetPaused(false);
             y += 108f;
+
+            if (UiSkin.Button(new Rect(px + 40f, y, pw - 80f, 76f), "LOADOUT", UiSkin.Teal, null, 30)) OpenLoadout();
+            y += 88f;
 
             if (online && host)
             {
@@ -529,6 +545,175 @@ namespace KnockbackRumble
                 UiSkin.Text(new Rect(row.x + 44f, row.y, row.width - 56f, row.height), p.Name + " is talking", UiSkin.BodyBold, 19,
                     UiSkin.Cream, TextAnchor.MiddleLeft, false);
                 y += 44f;
+            }
+        }
+
+        // =====================================================================
+        // Loadout and profile
+        // =====================================================================
+
+        static readonly string[] SlotNames = { "PRIMARY", "GADGET", "PERK 1", "PERK 2", "PAYOUT STREAK 1", "PAYOUT STREAK 2" };
+
+        struct Option
+        {
+            public byte id;
+            public string name, desc;
+            public int level;
+            public Color color;
+        }
+
+        void OpenLoadout()
+        {
+            editing = Profile.Loadout.Copy();
+            showLoadout = true;
+            showVolumes = false;
+            GUI.FocusControl(null);
+        }
+
+        /// <summary>Level, XP bar and wallet.</summary>
+        static void DrawProfileBar(Rect r)
+        {
+            UiSkin.Panel(r);
+            UiSkin.Heading(new Rect(r.x + 24f, r.y + 10f, 200f, 40f), "LEVEL " + Profile.Level, 32, UiSkin.Gold);
+            UiSkin.Heading(new Rect(r.x + r.width - 230f, r.y + 10f, 206f, 40f), "WALLET " + HUD.Money(Profile.Wallet), 26, UiSkin.Green,
+                TextAnchor.MiddleRight);
+            float fill = Profile.XpToNext > 0 ? Mathf.Clamp01((float)Profile.Xp / Profile.XpToNext) : 1f;
+            var bar = new Rect(r.x + 24f, r.y + 58f, r.width - 190f, 16f);
+            UiSkin.Pill(bar, UiSkin.PillDark);
+            if (fill > 0.02f) UiSkin.Pill(new Rect(bar.x, bar.y, Mathf.Max(16f, bar.width * fill), bar.height), UiSkin.Green);
+            UiSkin.Text(new Rect(bar.xMax + 10f, r.y + 50f, 150f, 32f), Profile.Xp + " / " + Profile.XpToNext + " XP", UiSkin.BodyBold, 18,
+                UiSkin.Muted, TextAnchor.MiddleRight, false);
+        }
+
+        Option[] OptionsFor(int slot)
+        {
+            var list = new System.Collections.Generic.List<Option>();
+            if (slot == 0)
+            {
+                foreach (var w in Loadouts.Primaries)
+                {
+                    string extra = "Ammo " + w.ammo + (w.zoomFov <= 30f ? "   -   Scope" : "");
+                    list.Add(new Option { id = w.netId, name = w.name, desc = w.description + "\n" + extra, level = w.unlockLevel, color = w.color });
+                }
+            }
+            else
+            {
+                var items = slot == 1 ? Loadouts.Gadgets : slot <= 3 ? Loadouts.Perks : Loadouts.Streaks;
+                if (slot == 5) list.Add(new Option { id = 0, name = "Empty", desc = "No second streak.", level = 1, color = UiSkin.Muted });
+                foreach (var i in items)
+                {
+                    string desc = i.description + (slot == 1 ? "\n" + i.cost + " per event (refill at crates with Scavenger)" : "");
+                    list.Add(new Option { id = i.id, name = i.name, desc = desc, level = i.unlockLevel, color = i.color });
+                }
+            }
+            return list.ToArray();
+        }
+
+        byte Equipped(Loadout l, int slot)
+        {
+            switch (slot)
+            {
+                case 0: return l.primary;
+                case 1: return (byte)l.gadget;
+                case 2: return (byte)l.perk1;
+                case 3: return (byte)l.perk2;
+                case 4: return (byte)l.streak1;
+                default: return (byte)l.streak2;
+            }
+        }
+
+        string EquippedName(Loadout l, int slot)
+        {
+            byte id = Equipped(l, slot);
+            foreach (var o in OptionsFor(slot)) if (o.id == id) return o.name;
+            return "-";
+        }
+
+        void Equip(Loadout l, int slot, byte id)
+        {
+            switch (slot)
+            {
+                case 0: l.primary = id; break;
+                case 1: l.gadget = (Gadget)id; break;
+                case 2: if ((Perk)id == l.perk2) l.perk2 = l.perk1; l.perk1 = (Perk)id; break;
+                case 3: if ((Perk)id == l.perk1) l.perk1 = l.perk2; l.perk2 = (Perk)id; break;
+                case 4:
+                    if ((Streak)id == l.streak2) l.streak2 = l.streak1;
+                    l.streak1 = (Streak)id;
+                    break;
+                default:
+                    if ((Streak)id == l.streak1) { if (l.streak2 == Streak.None) return; l.streak1 = l.streak2; }
+                    l.streak2 = (Streak)id;
+                    break;
+            }
+        }
+
+        void DrawLoadout(float W, float H, float oy)
+        {
+            if (editing == null) editing = Profile.Loadout.Copy();
+            UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.7f));
+
+            float cx = W / 2f, pw = 1460f, ph = 880f;
+            var panel = new Rect(cx - pw / 2f, oy + (1080f - ph) / 2f, pw, ph);
+            UiSkin.Panel(panel);
+            UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 26f, 400f, 60f), "LOADOUT", 52, UiSkin.Gold);
+            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 700f, 30f),
+                MatchController.Instance != null && MatchController.Instance.InMatch ? "Changes kick in at the start of the next event."
+                    : "Level up by playing shows to unlock more.", UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
+            DrawProfileBar(new Rect(panel.xMax - 520f, panel.y + 26f, 480f, 92f));
+
+            // Slots
+            float sx = panel.x + 40f, sy = panel.y + 140f, sw = 400f, sh = 100f;
+            for (int i = 0; i < SlotNames.Length; i++)
+            {
+                var r = new Rect(sx, sy + i * (sh + 12f), sw, sh);
+                bool sel = i == loadoutSlot;
+                if (UiSkin.Button(r, "", sel ? UiSkin.Yellow : UiSkin.Dark, null, 10)) loadoutSlot = i;
+                Color ink = sel ? UiSkin.Ink : UiSkin.Cream;
+                UiSkin.Text(new Rect(r.x + 26f, r.y + 12f, r.width - 40f, 30f), SlotNames[i], UiSkin.BodyBold, 19,
+                    new Color(ink.r, ink.g, ink.b, 0.75f), TextAnchor.MiddleLeft, false);
+                UiSkin.Text(new Rect(r.x + 26f, r.y + 40f, r.width - 40f, 44f), EquippedName(editing, i).ToUpperInvariant(), UiSkin.Display, 32,
+                    ink, TextAnchor.MiddleLeft, !sel);
+            }
+
+            // Options for the selected slot
+            var options = OptionsFor(loadoutSlot);
+            byte current = Equipped(editing, loadoutSlot);
+            byte other = loadoutSlot == 2 ? (byte)editing.perk2 : loadoutSlot == 3 ? (byte)editing.perk1
+                       : loadoutSlot == 4 ? (byte)editing.streak2 : loadoutSlot == 5 ? (byte)editing.streak1 : (byte)255;
+            float ox = panel.x + 480f, oyy = panel.y + 140f, cw = 460f, chh = 150f, gap = 20f;
+            int level = Profile.Level;
+            for (int i = 0; i < options.Length; i++)
+            {
+                var o = options[i];
+                var r = new Rect(ox + (i % 2) * (cw + gap), oyy + (i / 2) * (chh + gap), cw, chh);
+                bool locked = o.level > level;
+                bool on = o.id == current;
+                UiSkin.Card(r);
+                if (on) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(1f, 0.79f, 0.16f, 0.22f));
+                UiSkin.Fill(new Rect(r.x + 18f, r.y + 22f, 8f, r.height - 44f), locked ? UiSkin.Muted : o.color);
+                UiSkin.Heading(new Rect(r.x + 42f, r.y + 14f, r.width - 200f, 44f), o.name.ToUpperInvariant(), 30,
+                    locked ? UiSkin.Muted : UiSkin.Cream);
+                var desc = new GUIStyle { font = UiSkin.BodyBold, fontSize = 19, wordWrap = true, alignment = TextAnchor.UpperLeft };
+                desc.normal.textColor = locked ? new Color(0.75f, 0.72f, 0.82f, 0.7f) : UiSkin.Muted;
+                GUI.Label(new Rect(r.x + 42f, r.y + 60f, r.width - 64f, r.height - 70f), o.desc, desc);
+
+                if (locked) UiSkin.Badge(r.xMax - 170f, r.y + 18f, "LEVEL " + o.level, UiSkin.Red);
+                else if (on) UiSkin.Badge(r.xMax - 150f, r.y + 18f, "EQUIPPED", UiSkin.Green);
+                else if (o.id == other && o.id != 0) UiSkin.Badge(r.xMax - 150f, r.y + 18f, "OTHER SLOT", UiSkin.Teal);
+
+                if (!locked && !on && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                {
+                    Equip(editing, loadoutSlot, o.id);
+                    Profile.SetLoadout(editing);
+                    editing = Profile.Loadout.Copy();
+                }
+            }
+
+            if (UiSkin.Button(new Rect(panel.xMax - 340f, panel.yMax - 112f, 300f, 80f), "DONE", UiSkin.Yellow, null, 36))
+            {
+                Profile.SetLoadout(editing);
+                showLoadout = false;
             }
         }
 

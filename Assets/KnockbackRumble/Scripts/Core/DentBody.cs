@@ -21,6 +21,10 @@ namespace KnockbackRumble
         [Tooltip("Extra knockback multiplier per 100% Dent (1.2 = a hit at 100% launches 2.2x as far)")]
         public float dentScaling = 1.2f;
 
+        /// <summary>Perks: Steel Toes lowers knockback taken, Grease Monkey shortens stuns.</summary>
+        public float KnockTakenMultiplier { get; set; } = 1f;
+        public float StunMultiplier { get; set; } = 1f;
+
         public float Dent { get; private set; }
         /// <summary>False for dummies simulated on another machine (their hits get sent there).</summary>
         public bool IsLocal { get; set; } = true;
@@ -68,9 +72,9 @@ namespace KnockbackRumble
                 dir.Normalize();
             }
 
-            float knock = baseKnock * (1f + Dent / 100f * dentScaling);
+            float knock = baseKnock * (1f + Dent / 100f * dentScaling) * KnockTakenMultiplier;
             // Your own blasts never stun you, so rocket jumps stay controllable.
-            float stun = self ? 0f : Mathf.Clamp(knock * 0.05f, 0.2f, 1.8f);
+            float stun = self ? 0f : Mathf.Clamp(knock * 0.05f, 0.2f, 1.8f) * StunMultiplier;
             Motor.Launch(dir * knock, stun);
 
             if (!self)

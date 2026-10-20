@@ -23,10 +23,13 @@ namespace KnockbackRumble
         CrateTaken = 23,
         CrateBack = 24,
         BackToLobby = 25,
+        CashDelta = 26,     // cash changes: count, then (netId, amount, reason)
+        Bag = 27,           // money bag moved: index, carrier netId (NoId = on the ground), position
 
         // Sent to the host
         FinishReq = 40,
         CrateReq = 41,
+        BagReq = 42,        // "my dummy touched this bag": index, netId
 
         // Routed to the machine that owns the victim dummy
         Hit = 50,
@@ -37,11 +40,15 @@ namespace KnockbackRumble
         Launched = 62,
         Fell = 63,
         Voice = 64,
+        Gadget = 65,        // thrower netId, gadget, id, position, velocity
+        Boom = 66,          // gadget id, position, radius
+        StreakCall = 67,    // caller netId, streak, bomb count, then (position, delay) per bomb
+        Loadout = 68,       // netId + 6 loadout bytes (sent by the owner at round start)
     }
 
     public static class NetProtocol
     {
-        public const int Version = 2;
+        public const int Version = 3;
         public const int MaxPlayers = 8;
         public const int DirectPort = 7777;
         public const byte NoId = 255;

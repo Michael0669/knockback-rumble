@@ -14,6 +14,7 @@ namespace KnockbackRumble
                 case WeaponKind.Melee: Shove(def, owner, dir); break;
                 case WeaponKind.Hitscan: Hitscan(def, owner, origin, dir); break;
                 case WeaponKind.Rocket: Rocket.Spawn(def, owner, origin, dir); break;
+                case WeaponKind.Shotgun: Shotgun(def, owner, origin, dir, true); break;
             }
         }
 
@@ -50,6 +51,9 @@ namespace KnockbackRumble
                 case WeaponKind.Rocket:
                     Rocket.Spawn(def, owner, origin, dir, true);
                     break;
+                case WeaponKind.Shotgun:
+                    Shotgun(def, owner, origin, dir, false);
+                    break;
             }
         }
 
@@ -68,6 +72,56 @@ namespace KnockbackRumble
                 body.Hit(push.normalized, def.knockback, def.dent, owner, def.name, def.minLift);
             }
             Fx.Puff(center, 0.6f, Palette.White);
+        }
+
+        /// <summary>
+        /// Boom Stick: everyone inside a short cone gets one big launch (stronger up close).
+        /// Pellet tracers are just for show.
+        /// </summary>
+        static void Shotgun(WeaponDef def, GameObject owner, Vector3 origin, Vector3 dir, bool applyHits)
+        {
+            if (applyHits)
+            {
+                var bodies = new List<DentBody>(DentBody.All);
+                foreach (var body in bodies)
+                {
+                    if (body == null || body.gameObject == owner) continue;
+                    Vector3 to = body.Center - origin;
+                    float d = to.magnitude;
+                    if (d > def.range || d < 0.01f) continue;
+                    if (Vector3.Angle(dir, to) > def.spread * 1.8f) continue;
+                    if (Blocked(origin, body, owner)) continue;
+                    float falloff = 1f - 0.65f * (d / def.range);
+                    body.Hit((to.normalized + dir) * 0.5f, def.knockback * falloff, def.dent * falloff, owner, def.name, def.minLift);
+                }
+            }
+
+            for (int i = 0; i < def.pellets; i++)
+            {
+                Vector3 pd = Quaternion.Euler(Random.Range(-def.spread, def.spread), Random.Range(-def.spread, def.spread), 0f) * Vector3.forward;
+                pd = Quaternion.LookRotation(dir) * pd;
+                Vector3 end = origin + pd * def.range;
+                foreach (var hit in Physics.RaycastAll(origin, pd, def.range, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    var rb = hit.collider.attachedRigidbody;
+                    if (rb != null && rb.gameObject == owner) continue;
+                    if ((hit.point - origin).sqrMagnitude < (end - origin).sqrMagnitude) end = hit.point;
+                }
+                Fx.Tracer(origin, end, def.color);
+            }
+            Fx.Puff(origin + dir * 0.8f, 0.9f, def.color);
+        }
+
+        /// <summary>True if level geometry (not other dummies) is between the shooter and the body.</summary>
+        static bool Blocked(Vector3 from, DentBody body, GameObject owner)
+        {
+            Vector3 to = body.Center - from;
+            foreach (var hit in Physics.RaycastAll(from, to.normalized, to.magnitude, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.collider.GetComponentInParent<DentBody>() != null) continue;
+                return true;
+            }
+            return false;
         }
 
         static void Hitscan(WeaponDef def, GameObject owner, Vector3 origin, Vector3 dir)

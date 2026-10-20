@@ -5,13 +5,15 @@ using UnityEngine.InputSystem;
 namespace KnockbackRumble
 {
     /// <summary>
-    /// Sets up and tears down races, offline or online, and is the bridge between
-    /// gameplay and the network:
-    ///  - spawns the roster (you, other players, bots) with the right owner for each dummy
+    /// Sets up and tears down shows and their events, offline or online, and is the bridge
+    /// between gameplay and the network:
+    ///  - keeps the show's roster (you, other players, bots) and spawns it for each event,
+    ///    with the right owner for each dummy and the right loadout
     ///  - streams our dummies' positions ~20 times a second and feeds others' to RemoteDummy
-    ///  - forwards shots, hits, crate grabs, launches, falls and finishes
+    ///  - forwards shots, hits, gadgets, streaks, crate grabs, bags, launches, falls and finishes
     /// Who simulates what: every machine simulates its own player's dummy (so controls feel
-    /// instant); the host also simulates the bots, owns the crates and decides results.
+    /// instant); the host also simulates the bots, owns the crates and bags, pays out cash
+    /// and decides results.
     /// </summary>
     public class MatchController : MonoBehaviour
     {
@@ -55,6 +57,9 @@ namespace KnockbackRumble
         }
 
         readonly Dictionary<byte, Contestant> byId = new Dictionary<byte, Contestant>();
+        /// <summary>Who is in the current show. Kept between events so ids (and cash) stay the same.</summary>
+        readonly List<RosterEntry> showRoster = new List<RosterEntry>();
+        ShowManager show;
         readonly List<WeaponPickup> crates = new List<WeaponPickup>();
         readonly NetWriter writer = new NetWriter();
         RaceManager race;
@@ -68,6 +73,8 @@ namespace KnockbackRumble
             Instance = this;
             race = GetComponent<RaceManager>();
             if (race == null) race = gameObject.AddComponent<RaceManager>();
+            show = GetComponent<ShowManager>();
+            if (show == null) show = gameObject.AddComponent<ShowManager>();
         }
 
         void OnDestroy()
@@ -126,41 +133,63 @@ namespace KnockbackRumble
         }
 
         // =====================================================================
-        // Starting and ending races
+        // Starting and ending shows
         // =====================================================================
 
+        /// <summary>A new show against bots.</summary>
         public void StartOffline()
         {
             if (Net.Online) return;
-            var roster = new List<RosterEntry>
-            {
-                new RosterEntry { netId = 0, owner = Net.LocalId, bot = false, style = 0, name = OfflineName }
-            };
-            AddBots(roster, OfflineBots);
-            BeginRace(roster, Net.Time + race.countdownTime);
+            showRoster.Clear();
+            showRoster.Add(new RosterEntry { netId = 0, owner = Net.LocalId, bot = false, style = 0, name = OfflineName });
+            AddBots(showRoster, OfflineBots);
+            StartRound(0);
         }
 
-        /// <summary>Host: start a race with everyone in the lobby (plus bots).</summary>
+        /// <summary>Host: start a new show with everyone in the lobby (plus bots).</summary>
         public void HostStartRace()
         {
             var s = Net.Session;
             if (!Net.Online || !s.IsHost) return;
 
-            var roster = new List<RosterEntry>();
+            showRoster.Clear();
             foreach (var p in s.Peers)
-                roster.Add(new RosterEntry { netId = (byte)roster.Count, owner = p.Id, bot = false, style = p.Color, name = p.Name });
-            if (FillWithBots) AddBots(roster, RaceSize - roster.Count);
-
-            float start = Net.Time + race.countdownTime;
-            var w = writer.Begin(MsgType.StartRace).Float(start).Byte((byte)roster.Count);
-            foreach (var e in roster) w.Byte(e.netId).ULong(e.owner).Bool(e.bot).Byte(e.style).Str(e.name);
-            s.Send(w);
-            BeginRace(roster, start);
+                showRoster.Add(new RosterEntry { netId = (byte)showRoster.Count, owner = p.Id, bot = false, style = p.Color, name = p.Name });
+            if (FillWithBots) AddBots(showRoster, RaceSize - showRoster.Count);
+            StartRound(0);
         }
 
-        /// <summary>Host / offline: R on the results screen.</summary>
+        /// <summary>Host / offline: the next event of the current show.</summary>
+        public void HostNextRound()
+        {
+            if (!Net.IsHost || show.IsLastRound || showRoster.Count == 0) return;
+            StartRound(show.RoundIndex + 1);
+        }
+
+        void StartRound(int round)
+        {
+            var kind = ShowManager.KindFor(round);
+            int seed = Random.Range(1, int.MaxValue);
+            float start = Net.Time + race.countdownTime;
+            if (Net.Online)
+            {
+                var w = writer.Begin(MsgType.StartRace).Float(start).Byte((byte)kind).Byte((byte)round).Int(seed)
+                    .Byte((byte)showRoster.Count);
+                foreach (var e in showRoster) w.Byte(e.netId).ULong(e.owner).Bool(e.bot).Byte(e.style).Str(e.name);
+                Net.Session.Send(w);
+            }
+            BeginRace(showRoster, start, kind, round, seed);
+        }
+
+        /// <summary>Host / offline: R on the results screen. Skips the wait, or starts a new show after the last event.</summary>
         public void NextRace()
         {
+            if (!Net.IsHost) return;
+            if (!show.ShowOver && !show.IsLastRound && showRoster.Count > 0)
+            {
+                HostNextRound();
+                return;
+            }
             if (Net.Online) HostStartRace();
             else StartOffline();
         }
@@ -188,10 +217,15 @@ namespace KnockbackRumble
             }
         }
 
-        void BeginRace(List<RosterEntry> roster, float raceStart)
+        void BeginRace(List<RosterEntry> roster, float raceStart, EventKind kind, int round, int seed)
         {
             ClearContestants();
+            Gadgets.ClearAll();
             foreach (var p in crates) if (p != null) p.ResetCrate();
+
+            var eventCourse = CourseInfo.Find(kind);
+            if (eventCourse == null) { eventCourse = course; kind = EventKind.Gauntlet; }
+            show.BeginRound(kind, round, eventCourse, seed);
 
             var list = new List<Contestant>();
             for (int i = 0; i < roster.Count; i++)
@@ -202,7 +236,7 @@ namespace KnockbackRumble
                 Color color = e.bot ? persona.Color : HumanColors[e.style % HumanColors.Length];
                 bool isPlayer = !e.bot && local;
 
-                var c = Contestant.Create(e.name, color, isPlayer, persona, race.SpawnPointFor(course, i), Quaternion.identity,
+                var c = Contestant.Create(e.name, color, isPlayer, persona, race.SpawnPointFor(eventCourse, i), Quaternion.identity,
                     e.netId, e.owner, local, !e.bot);
 
                 if (isPlayer)
@@ -212,16 +246,28 @@ namespace KnockbackRumble
                     LocalPlayer = c;
                 }
                 if (e.bot && local)
-                    c.gameObject.AddComponent<BotBrain>().Init(c, course, Random.Range(BotSkillMin, BotSkillMax));
+                    c.gameObject.AddComponent<BotBrain>().Init(c, eventCourse, Random.Range(BotSkillMin, BotSkillMax));
+
+                // Loadouts: yours from your profile, bots get a random one. Owners tell everyone else.
+                if (local)
+                {
+                    c.ApplyLoadout(isPlayer ? Profile.Loadout : Loadouts.RandomForBot(new System.Random(seed + e.netId * 7919)));
+                    if (Net.Online)
+                    {
+                        var w = writer.Begin(MsgType.Loadout).Byte(c.NetId);
+                        c.Loadout.Write(w);
+                        Net.Session.Send(w);
+                    }
+                }
 
                 byId[e.netId] = c;
                 list.Add(c);
             }
 
-            // Joined mid-race and not in this one? Watch the first dummy.
+            // Joined mid-show and not in this one? Watch the first dummy.
             if (LocalPlayer == null && list.Count > 0) cam.SetTarget(list[0].transform);
 
-            race.Begin(course, list, raceStart);
+            race.Begin(eventCourse, list, raceStart, kind, seed);
         }
 
         /// <summary>Stop the current race (if any) and go back to the menu/lobby view.</summary>
@@ -230,6 +276,9 @@ namespace KnockbackRumble
             if (this == null) return; // being destroyed (quitting)
             ClearContestants();
             race.Clear();
+            show.Clear();
+            Gadgets.ClearAll();
+            showRoster.Clear();
             foreach (var p in crates) if (p != null) p.ResetCrate();
             ShowMenuCamera();
             MenuUI.SetPaused(false);
@@ -281,6 +330,7 @@ namespace KnockbackRumble
                 byId.Remove(id);
                 Destroy(c.gameObject);
             }
+            showRoster.RemoveAll(e => e.owner == peer);
         }
 
         // =====================================================================
@@ -405,10 +455,9 @@ namespace KnockbackRumble
         void HostTakeCrate(WeaponPickup crate, Contestant c)
         {
             if (crate == null || c == null || !crate.Available) return;
-            var def = crate.Roll();
-            crate.Take(c, def);
+            crate.Take(c);
             if (Net.Online)
-                Net.Session.Send(writer.Begin(MsgType.CrateTaken).Byte((byte)crate.Index).Byte(c.NetId).Byte(def.netId));
+                Net.Session.Send(writer.Begin(MsgType.CrateTaken).Byte((byte)crate.Index).Byte(c.NetId));
         }
 
         public void HostCrateRespawned(WeaponPickup crate)
@@ -430,12 +479,15 @@ namespace KnockbackRumble
                 {
                     if (Net.IsHost) return;
                     float start = r.Float();
+                    var kind = (EventKind)r.Byte();
+                    int round = r.Byte();
+                    int seed = r.Int();
                     int n = r.Byte();
-                    var roster = new List<RosterEntry>(n);
+                    showRoster.Clear();
                     for (int i = 0; i < n; i++)
-                        roster.Add(new RosterEntry { netId = r.Byte(), owner = r.ULong(), bot = r.Bool(), style = r.Byte(), name = r.Str() });
-                    MenuUI.SetPaused(false);
-                    BeginRace(roster, start);
+                        showRoster.Add(new RosterEntry { netId = r.Byte(), owner = r.ULong(), bot = r.Bool(), style = r.Byte(), name = r.Str() });
+                    if (round == 0) MenuUI.SetPaused(false);
+                    BeginRace(showRoster, start, kind, round, seed);
                     break;
                 }
 
@@ -557,8 +609,7 @@ namespace KnockbackRumble
                 {
                     var crate = Crate(r.Byte());
                     var c = Find(r.Byte());
-                    var def = WeaponDef.ById(r.Byte());
-                    if (crate != null && !Net.IsHost) crate.Take(c, def);
+                    if (crate != null && !Net.IsHost) crate.Take(c);
                     break;
                 }
 
@@ -566,6 +617,72 @@ namespace KnockbackRumble
                 {
                     var crate = Crate(r.Byte());
                     if (crate != null && !Net.IsHost) crate.SetAvailable(true);
+                    break;
+                }
+
+                case MsgType.Loadout:
+                {
+                    var c = Find(r.Byte());
+                    var loadout = Loadout.Read(r);
+                    if (c != null && !c.IsLocal) c.Loadout = loadout;
+                    break;
+                }
+
+                case MsgType.Gadget:
+                {
+                    var c = Find(r.Byte());
+                    var gadget = (Gadget)r.Byte();
+                    ushort id = r.UShort();
+                    Vector3 pos = r.Vec3();
+                    Vector3 vel = r.Vec3();
+                    Gadgets.OnRemoteGadget(c, gadget, id, pos, vel);
+                    break;
+                }
+
+                case MsgType.Boom:
+                {
+                    ushort id = r.UShort();
+                    Vector3 pos = r.Vec3();
+                    float radius = r.Float();
+                    Gadgets.OnRemoteBoom(id, pos, radius);
+                    break;
+                }
+
+                case MsgType.StreakCall:
+                {
+                    var c = Find(r.Byte());
+                    var streak = (Streak)r.Byte();
+                    int n = r.Byte();
+                    var targets = new List<Vector3>(n);
+                    var delays = new List<float>(n);
+                    for (int i = 0; i < n; i++)
+                    {
+                        targets.Add(r.Vec3());
+                        delays.Add(r.Float());
+                    }
+                    Gadgets.OnRemoteStreak(c, streak, targets, delays);
+                    break;
+                }
+
+                case MsgType.CashDelta:
+                    if (!Net.IsHost) show.OnCashDelta(r);
+                    break;
+
+                case MsgType.BagReq:
+                {
+                    int index = r.Byte();
+                    var c = Find(r.Byte());
+                    if (Net.IsHost && c != null && c.OwnerPeer == from) show.OnBagRequest(index, c);
+                    break;
+                }
+
+                case MsgType.Bag:
+                {
+                    int index = r.Byte();
+                    byte carrierId = r.Byte();
+                    Vector3 pos = r.Vec3();
+                    bool carried = carrierId != NetProtocol.NoId;
+                    show.OnBagMessage(index, carried ? Find(carrierId) : null, carried, pos);
                     break;
                 }
             }

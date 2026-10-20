@@ -38,6 +38,63 @@ namespace KnockbackRumble
         public int Falls;
         public int Knockoffs;
 
+        // Loadout and Payout Streaks
+        public Loadout Loadout = new Loadout();
+        /// <summary>Knock-offs since this dummy last fell.</summary>
+        public int StreakCount;
+        /// <summary>Streaks earned but not called in yet (oldest first).</summary>
+        public readonly System.Collections.Generic.List<Streak> ReadyStreaks = new System.Collections.Generic.List<Streak>();
+        /// <summary>Out of the current round (Crumble Plaza): parked in the Losers' Lounge.</summary>
+        public bool Eliminated;
+
+        /// <summary>Arm this dummy with a loadout and apply its perks. Owner only.</summary>
+        public void ApplyLoadout(Loadout loadout)
+        {
+            Loadout = loadout.Copy();
+            Weapons.Equip(Loadout);
+            Dent.KnockTakenMultiplier = Loadout.Has(Perk.SteelToes) ? 0.75f : 1f;
+            Dent.StunMultiplier = Loadout.Has(Perk.GreaseMonkey) ? 0.6f : 1f;
+            Motor.ExtraJumps = Loadout.Has(Perk.DoubleJump) ? 1 : 0;
+            Motor.SpeedMultiplier = Loadout.Has(Perk.Lightweight) ? 1.12f : 1f;
+        }
+
+        /// <summary>A knock-off counted toward this dummy's streak. Returns a newly earned streak, if any.</summary>
+        public Streak AddStreakKnockoff()
+        {
+            StreakCount++;
+            foreach (var s in new[] { Loadout.streak1, Loadout.streak2 })
+            {
+                var info = Loadouts.StreakInfo(s);
+                if (info != null && info.cost == StreakCount) { ReadyStreaks.Add(s); return s; }
+            }
+            return Streak.None;
+        }
+
+        /// <summary>Call in the oldest earned streak. Owner only. False if there's nothing to call (or it's not the time).</summary>
+        public bool CallReadyStreak()
+        {
+            var race = RaceManager.Instance;
+            if (ReadyStreaks.Count == 0 || Eliminated || race == null || race.State != RaceManager.Phase.Racing) return false;
+            var s = ReadyStreaks[0];
+            ReadyStreaks.RemoveAt(0);
+            Gadgets.CallStreak(this, s);
+            return true;
+        }
+
+        /// <summary>Knock-offs still needed for the next streak in the loadout (0 if none left to earn).</summary>
+        public int KnockoffsToNextStreak(out Streak next)
+        {
+            next = Streak.None;
+            int best = int.MaxValue;
+            foreach (var s in new[] { Loadout.streak1, Loadout.streak2 })
+            {
+                var info = Loadouts.StreakInfo(s);
+                if (info == null || info.cost <= StreakCount) continue;
+                if (info.cost < best) { best = info.cost; next = s; }
+            }
+            return next == Streak.None ? 0 : best - StreakCount;
+        }
+
         // Speech bubble
         public string BarkText { get; private set; }
         public float BarkTime { get; private set; } = -99f;

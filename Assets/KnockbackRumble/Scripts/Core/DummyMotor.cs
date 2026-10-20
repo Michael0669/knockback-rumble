@@ -41,6 +41,9 @@ namespace KnockbackRumble
         public Vector3 FacingInput { get; set; }
         public bool InputLocked { get; set; }
         public float SpeedMultiplier { get; set; } = 1f;
+        /// <summary>Extra jumps allowed in mid-air (Double Jump perk = 1).</summary>
+        public int ExtraJumps { get; set; }
+        int airJumpsLeft;
 
         public bool Grounded { get => IsRemote ? remoteGrounded : grounded; private set => grounded = value; }
         public bool Diving { get => IsRemote ? remoteDiving : diving; private set => diving = value; }
@@ -223,6 +226,13 @@ namespace KnockbackRumble
                     Grounded = false;
                     groundSuppress = 0.12f;
                 }
+                else if (jumpBuffer > 0f && !InputLocked && airJumpsLeft > 0)
+                {
+                    // Double Jump perk
+                    vy = jumpSpeed * 0.9f;
+                    jumpBuffer = 0f;
+                    airJumpsLeft--;
+                }
 
                 // Dive: a forward lunge you can use once per airtime
                 if (diveQueued)
@@ -283,7 +293,7 @@ namespace KnockbackRumble
                 Grounded = found;
             }
 
-            if (Grounded) coyoteTimer = coyoteTime;
+            if (Grounded) { coyoteTimer = coyoteTime; airJumpsLeft = ExtraJumps; }
             else coyoteTimer -= dt;
         }
     }

@@ -62,7 +62,21 @@ namespace KnockbackRumble
 
         // ---------- Event hooks (called by RaceManager) ----------
 
-        public static void Intro() => Say(IntroLines, true);
+        public static void Intro(EventKind kind)
+        {
+            switch (kind)
+            {
+                case EventKind.CashGrab: Say(CashGrabIntroLines, true); break;
+                case EventKind.Crumble: Say(CrumbleIntroLines, true); break;
+                default: Say(IntroLines, true); break;
+            }
+        }
+
+        public static void Streak(Streak streak, bool byPlayer)
+        {
+            if (streak == KnockbackRumble.Streak.WreckingBall) Say(WreckingBallLines, true);
+            else Say(GaryStrikeLines, byPlayer);
+        }
         public static void Countdown() => Say(CountdownLines);
         public static void Go() => Say(GoLines, true);
 
@@ -100,9 +114,33 @@ namespace KnockbackRumble
         static readonly VoiceLine[] IntroLines = Mix(
             R("intro",
                 "Welcome back to Knockback Rumble, the only show the F C C begged us to cancel!",
-                "I'm Rusty Nutz, I'm legally drunk, and this is Scrap Sprint!",
+                "I'm Rusty Nutz, I'm legally drunk, and this is The Gauntlet!",
                 "Tonight's contestants signed a waiver none of 'em read. God bless America."),
             T("intro", "Rusty's been sober for... nope, I can smell him from the booth."));
+
+        static readonly VoiceLine[] CashGrabIntroLines = Mix(
+            R("intro_cashgrab",
+                "Welcome to Cash Grab! Three bags of money, eight greedy idiots. Grab a bag and don't let go!",
+                "Cash Grab, baby! Hold the bag, get paid. Get hit, drop the bag. It's basically the economy."),
+            T("intro_cashgrab", "This money is real. Just kidding, it's Rusty's alimony."));
+
+        static readonly VoiceLine[] CrumbleIntroLines = Mix(
+            R("intro_crumble",
+                "Crumble Plaza! Built by the lowest bidder, and folks, it shows!",
+                "The floor is falling apart and so is my liver. Last dummy standing gets paid!"),
+            T("intro_crumble", "If you fall, you go to the Losers' Lounge. The snacks are expired."));
+
+        static readonly VoiceLine[] GaryStrikeLines = Mix(
+            R("gary_strike",
+                "Gary's coming in hot! Gary had Taco Bell! Everybody take cover!",
+                "Incoming seagull! That's not rain, folks!"),
+            T("gary_strike", "Gary, no! Not on the contestants! ...Okay, yes on the contestants."));
+
+        static readonly VoiceLine[] WreckingBallLines = Mix(
+            R("wrecking_ball",
+                "Wrecking ball incoming on the rich kid! Eat the rich!",
+                "Somebody's got too much money and the universe noticed!"),
+            T("wrecking_ball", "That's what you get for being rich. Trickle down THAT."));
 
         static readonly VoiceLine[] CountdownLines = R("countdown",
             "Three... two... one... somebody's gonna cry!",
@@ -163,28 +201,28 @@ namespace KnockbackRumble
 
         static readonly VoiceLine[] PlayerQualifiedLines = R("player_qualified",
             "You made it, you beautiful dented son of a gun!",
-            "Look at you! Qualified! Your parents might finally return your calls!");
+            "Look at you! You finished! Your parents might finally return your calls!");
 
         static readonly VoiceLine[] BotQualifiedLines = R("bot_qualified",
             "Another one crosses the line! Somebody hose 'em off!",
-            "Qualified, and only slightly dented!");
+            "Across the line, and only slightly dented!");
 
         static readonly VoiceLine[] EndWinLines = Mix(
-            R("end_win", "That's the race! Losers, report to the crusher."),
-            T("end_win", "Race over! Somebody get Rusty a bucket."));
+            R("end_win", "That's the event, and you're on top! Somebody check if they cheated."),
+            T("end_win", "You're the richest dummy out there. Don't spend it all on lawyers."));
 
         static readonly VoiceLine[] EndLoseLines = Mix(
             R("end_lose",
-                "Eliminated! Go home, your family's embarrassed.",
-                "That's it for you. Don't let the scrap door hit your ass on the way out."),
-            T("end_lose", "Aww, you got eliminated. Anyway!"));
+                "That's the event! You're broke, but at least you're ugly.",
+                "Time's up! Somebody's richer than you, and they want you to know it."),
+            T("end_lose", "Aww, somebody's got more money than you. Anyway!"));
 
         /// <summary>Every announcer line, for voice generation and the recording script.</summary>
         public static IEnumerable<VoiceLine> AllLines()
         {
             var sets = new[]
             {
-                IntroLines, CountdownLines, GoLines, PlayerLaunchedLines, PlayerLaunchedSomeoneLines, HazardHitLines,
+                IntroLines, CashGrabIntroLines, CrumbleIntroLines, GaryStrikeLines, WreckingBallLines, CountdownLines, GoLines, PlayerLaunchedLines, PlayerLaunchedSomeoneLines, HazardHitLines,
                 BotLaunchedLines, PlayerKnockedSomeoneOffLines, PlayerKnockedOffLines, PlayerSoloFallLines, BotFellLines,
                 SelfOwnLines, PlayerQualifiedLines, BotQualifiedLines, EndWinLines, EndLoseLines,
             };

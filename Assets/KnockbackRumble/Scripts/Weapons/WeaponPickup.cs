@@ -3,7 +3,10 @@ using UnityEngine;
 
 namespace KnockbackRumble
 {
-    /// <summary>A floating weapon crate. Touch it to grab the weapon; it respawns after a few seconds.</summary>
+    /// <summary>
+    /// A floating ammo crate. Touch it to refill your loadout weapon (and your gadget with
+    /// the Scavenger perk). It respawns after a while. The host decides who got it.
+    /// </summary>
     public class WeaponPickup : MonoBehaviour
     {
         public static readonly List<WeaponPickup> All = new List<WeaponPickup>();
@@ -11,8 +14,8 @@ namespace KnockbackRumble
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() => All.Clear();
 
-        [Tooltip("pistol, rocket or random")]
-        public string weaponId = "random";
+        [Tooltip("Kept for old scenes; every crate is an ammo crate now")]
+        public string weaponId = "ammo";
         public float respawnTime = 20f;
 
         public bool Available { get; private set; } = true;
@@ -32,11 +35,8 @@ namespace KnockbackRumble
             box.size = new Vector3(1.6f, 2f, 1.6f);
             box.center = new Vector3(0f, 1f, 0f);
 
-            Color c = id == "pistol" ? WeaponDef.PopPistol.color
-                    : id == "rocket" ? WeaponDef.RocketLauncher.color
-                    : Palette.Gold;
             var go = Shapes.Make(PrimitiveType.Cube, "Crate", transform, new Vector3(0f, 1f, 0f), Vector3.one * 0.8f,
-                Mats.Get("Crate_" + id, c), false);
+                Mats.Get("Crate_Ammo", new Color(0.45f, 0.55f, 0.25f)), false);
             Shapes.Make(PrimitiveType.Cube, "Band", go.transform, Vector3.zero, new Vector3(1.05f, 0.25f, 1.05f),
                 Mats.Get("Dummy_Black", Palette.Black), false);
             crate = go.transform;
@@ -75,29 +75,25 @@ namespace KnockbackRumble
             if (!Available || Time.time < nextRequest) return;
             var c = other.GetComponentInParent<Contestant>();
             if (c == null || !c.IsLocal) return; // each machine only grabs for its own dummies
-            var holder = c.Weapons;
-            if (weaponId != "random")
-            {
-                var def = WeaponDef.FromId(weaponId);
-                if (holder.Held == def && holder.Ammo >= def.ammo) return; // already full, leave it for someone else
-            }
+            if (c.Eliminated || c.Weapons.Disabled) return;
+            if (!c.Weapons.NeedsRefill(Scavenges(c))) return; // already full, leave it for someone else
             nextRequest = Time.time + 0.5f;
 
             if (MatchController.Instance != null) MatchController.Instance.RequestCrate(this, c);
-            else Take(c, WeaponDef.FromId(weaponId));
+            else Take(c);
         }
 
-        /// <summary>Resolves "random" into an actual weapon. Called on the host.</summary>
-        public WeaponDef Roll() => WeaponDef.FromId(weaponId);
+        static bool Scavenges(Contestant c) => c.Loadout != null && c.Loadout.Has(Perk.Scavenger);
 
-        /// <summary>The crate was taken by c (on every machine). Only the owner of c gets the weapon.</summary>
-        public void Take(Contestant c, WeaponDef def)
+        /// <summary>The crate was taken by c (on every machine). Only the owner of c gets the ammo.</summary>
+        public void Take(Contestant c)
         {
             SetAvailable(false);
             timer = respawnTime;
-            if (c == null || !c.IsLocal || def == null) return;
-            c.Weapons.Give(def);
-            if (c.IsPlayer) Announcer.ShowToast("Got the " + def.name + "!");
+            if (c == null || !c.IsLocal) return;
+            bool gadget = Scavenges(c);
+            c.Weapons.Refill(gadget);
+            if (c.IsPlayer) Announcer.ShowToast(gadget ? "AMMO + GADGET REFILLED!" : "AMMO REFILLED!");
         }
 
         public void ResetCrate()
