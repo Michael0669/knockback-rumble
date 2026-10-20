@@ -71,6 +71,9 @@ New items go in `Scripts/Loadout/Loadouts.cs` (perks, gadgets, streaks) and `Scr
 | Throw gadget | G | LB |
 | Call in a Payout Streak | Q | Y |
 | Pause menu (loadout, leave game, back to lobby) | Esc | Back / Select |
+| Full standings (hold) | Tab | |
+| Spectating: switch player | Left / right click, A / D | LB / RB |
+| Spectating: heckle (tomato, boo, air horn, fart) | 1 / 2 / 3 / 4 | D-pad |
 | Mute / unmute your mic | M | |
 | Skip to the next event / new show (host or offline, on results) | R | Start |
 | Everyone back to the lobby (host, on results) | L | |

@@ -665,6 +665,15 @@ namespace KnockbackRumble
                     break;
                 }
 
+                case MsgType.Heckle:
+                {
+                    var fromC = Find(r.Byte());
+                    var target = Find(r.Byte());
+                    var kind = (HeckleKind)r.Byte();
+                    if (fromC != null && !fromC.IsLocal) Heckles.Apply(fromC, target, kind);
+                    break;
+                }
+
                 case MsgType.CashDelta:
                     if (!Net.IsHost) show.OnCashDelta(r);
                     break;

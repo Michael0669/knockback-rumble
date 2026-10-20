@@ -29,6 +29,22 @@ namespace KnockbackRumble
         }
 
         static float hitMarkerTime = -99f, hitMarkerSize;
+        static float heckleTime = -99f;
+        static HeckleKind heckleKind;
+        static Vector2[] splats;
+
+        /// <summary>Someone heckled you. A tomato splats across your screen.</summary>
+        public static void Heckled(HeckleKind kind)
+        {
+            heckleTime = Time.time;
+            heckleKind = kind;
+            if (kind == HeckleKind.Tomato)
+            {
+                splats = new Vector2[6];
+                for (int i = 0; i < splats.Length; i++) splats[i] = new Vector2(Random.Range(0.2f, 0.8f), Random.Range(0.2f, 0.8f));
+            }
+            if (kind == HeckleKind.Horn) ThirdPersonCamera.Shake(0.25f);
+        }
 
         /// <summary>Flash the hit marker (you hit someone). Bigger hits = bigger, redder marker.</summary>
         public static void HitMarker(float knock)
@@ -70,16 +86,18 @@ namespace KnockbackRumble
             {
                 DrawCash(race, show, p);
                 DrawLeaderboard(race, show, W);
-                bool done = p != null && p.Finished;
+                bool done = p != null && (p.Finished || p.Eliminated);
                 if (!done) DrawPlayerPanel(race, show, p, W, H);
                 DrawToast(W, H);
-                if (!MenuUI.Paused && p != null && !p.Eliminated && !done && !scoped) DrawCrosshair(W, H);
+                if (!MenuUI.Paused && p != null && !done && !scoped) DrawCrosshair(W, H);
                 if (done) DrawSpectating(p, W, H);
+                DrawHeckled(W, H);
                 if (!MenuUI.Paused && p != null) DrawHitMarker(W, H);
-                if (p != null && p.Eliminated) DrawEliminated(W, H);
             }
             if (race.State == RaceManager.Phase.Countdown) DrawCountdown(race, show, W, H);
-            if (results)
+            bool tab = UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.tabKey.isPressed;
+            if (tab && !MenuUI.Paused) DrawScoreboard(race, show, W, H);
+            else if (results)
             {
                 if (show.ShowOver) DrawShowResults(race, show, W, H);
                 else DrawRoundResults(race, show, W, H);
@@ -308,24 +326,99 @@ namespace KnockbackRumble
 
         void DrawSpectating(Contestant p, float W, float H)
         {
-            var r = new Rect(W / 2f - 380f, H - 150f, 760f, 104f);
-            UiSkin.Pill(r, new Color(0.1f, 0.09f, 0.16f, 0.9f));
             var watching = PlayerInputDriver.Spectating;
-            string head = "YOU FINISHED #" + p.FinishPlace + "!";
+            float h = watching != null ? 160f : 104f;
+            var r = new Rect(W / 2f - 420f, H - 30f - h, 840f, h);
+            UiSkin.Pill(r, p.Eliminated ? new Color(0.3f, 0.07f, 0.11f, 0.92f) : new Color(0.1f, 0.09f, 0.16f, 0.92f));
+            string head = p.Eliminated ? "YOU'RE OUT!" : "YOU FINISHED #" + p.FinishPlace + "!";
             Label(new Rect(r.x, r.y + 6f, r.width, 48f), head, mid, UiSkin.Gold, UiSkin.Display, 36);
-            string sub = watching != null
-                ? "WATCHING  " + watching.DisplayName.ToUpperInvariant() + "     <  LEFT / RIGHT CLICK  >"
-                : "Waiting for the others to finish...";
-            Label(new Rect(r.x + 20f, r.y + 54f, r.width - 40f, 40f), sub, mid, UiSkin.Cream, UiSkin.Display, 24);
+            if (watching == null)
+            {
+                string wait = p.Eliminated ? "Grab a seat in the Losers' Lounge..." : "Waiting for the others to finish...";
+                Label(new Rect(r.x + 20f, r.y + 54f, r.width - 40f, 40f), wait, mid, UiSkin.Cream, UiSkin.Display, 24);
+                return;
+            }
+            Label(new Rect(r.x + 20f, r.y + 52f, r.width - 40f, 40f),
+                "WATCHING  " + watching.DisplayName.ToUpperInvariant() + "     <  LEFT / RIGHT CLICK  >", mid, UiSkin.Cream, UiSkin.Display, 24);
+
+            // Heckle buttons
+            float cool = PlayerInputDriver.HeckleCooldownLeft;
+            float bw = 186f, gap = 12f, x0 = r.center.x - (4 * bw + 3 * gap) / 2f;
+            for (int i = 0; i < 4; i++)
+            {
+                var k = (HeckleKind)(i + 1);
+                var b = new Rect(x0 + i * (bw + gap), r.y + 100f, bw, 44f);
+                UiSkin.Pill(b, cool > 0f ? UiSkin.Dark : UiSkin.Yellow);
+                Label(b, "[" + (i + 1) + "] " + Heckles.Label(k), mid, cool > 0f ? UiSkin.Muted : UiSkin.Ink, UiSkin.Display, 22, false);
+            }
         }
 
-        void DrawEliminated(float W, float H)
+        void DrawHeckled(float W, float H)
         {
-            var r = new Rect(W / 2f - 340f, H * 0.2f, 680f, 92f);
-            UiSkin.Pill(r, new Color(0.35f, 0.08f, 0.12f, 0.9f));
-            Label(new Rect(r.x, r.y + 4f, r.width, 50f), "ELIMINATED", mid, UiSkin.Cream, UiSkin.Display, 40);
-            Label(new Rect(r.x, r.y + 50f, r.width, 34f), "Enjoy the Losers' Lounge. Heckle them on voice chat.", center, UiSkin.Muted,
-                UiSkin.BodyBold, 19, false);
+            float age = Time.time - heckleTime;
+            if (heckleKind == HeckleKind.Tomato && splats != null && age < 3f)
+            {
+                // Tomato guts drip down your screen.
+                float a = age < 2f ? 0.9f : 0.9f * (1f - (age - 2f));
+                for (int i = 0; i < splats.Length; i++)
+                {
+                    float size = 260f + (i % 3) * 120f;
+                    Vector2 c = new Vector2(splats[i].x * W, splats[i].y * H + age * 30f * (1 + i % 2));
+                    UiSkin.Image(new Rect(c.x - size / 2f, c.y - size / 2f, size, size), UiSkin.Dot, new Color(0.75f, 0.08f, 0.05f, a));
+                    UiSkin.Image(new Rect(c.x - size * 0.3f, c.y - size * 0.3f, size * 0.6f, size * 0.6f), UiSkin.Dot,
+                        new Color(0.95f, 0.3f, 0.15f, a));
+                    UiSkin.Image(new Rect(c.x - size * 0.12f, c.y + size * 0.35f, size * 0.24f, size * 0.5f + age * 60f), UiSkin.Dot,
+                        new Color(0.75f, 0.08f, 0.05f, a));
+                }
+            }
+            else if (heckleKind == HeckleKind.Fart && age < 2.5f)
+            {
+                // A sickly green haze.
+                UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.45f, 0.6f, 0.1f, 0.3f * (1f - age / 2.5f)));
+            }
+        }
+
+        void DrawScoreboard(RaceManager race, ShowManager show, float W, float H)
+        {
+            var order = show.Ranking(race.Contestants);
+            float rowH = 46f;
+            var r = new Rect(W / 2f - 520f, 130f, 1040f, 150f + order.Count * rowH);
+            UiSkin.Panel(r);
+            Label(new Rect(r.x, r.y + 18f, r.width, 50f), "STANDINGS", mid, UiSkin.Gold, UiSkin.Display, 44);
+            Label(new Rect(r.x, r.y + 66f, r.width, 30f), Events.Title(race.Kind) + "  -  EVENT " + (show.RoundIndex + 1) + " OF " + show.RoundCount,
+                mid, UiSkin.LabelBlue, UiSkin.Display, 22);
+
+            float y = r.y + 104f;
+            string[] heads = { "CONTESTANT", "STATUS", "K.O.", "FALLS", "THIS EVENT", "TOTAL" };
+            float[] xs = { 90f, 420f, 590f, 680f, 790f, 920f };
+            float[] ws = { 320f, 160f, 80f, 90f, 120f, 100f };
+            for (int i = 0; i < heads.Length; i++)
+                Label(new Rect(r.x + xs[i], y, ws[i], 30f), heads[i], i == 0 ? left : right, UiSkin.Muted, UiSkin.Display, 18);
+            y += 34f;
+
+            for (int i = 0; i < order.Count; i++)
+            {
+                var c = order[i];
+                if (c.IsPlayer) UiSkin.Pill(new Rect(r.x + 24f, y + 3f, r.width - 48f, rowH - 6f), new Color(1f, 0.79f, 0.16f, 0.18f));
+                Color col = c.IsPlayer ? UiSkin.Gold : c.Eliminated ? new Color(1f, 1f, 1f, 0.5f) : UiSkin.Cream;
+                Label(new Rect(r.x + 40f, y, 40f, rowH), (i + 1).ToString(), left, col, UiSkin.Display, 26);
+                Box(new Rect(r.x + 76f, y + rowH / 2f - 8f, 16f, 16f), c.Color);
+                Label(new Rect(r.x + xs[0] + 12f, y, ws[0] - 12f, rowH), c.DisplayName + (c.IsPlayer ? "  (you)" : ""), left, col, UiSkin.Body, 24);
+
+                string status = c.Eliminated ? "OUT"
+                              : c.Finished ? "FINISHED #" + c.FinishPlace
+                              : show.BagOf(c) != null ? "HAS A BAG"
+                              : c.StreakCount > 0 ? c.StreakCount + " STREAK"
+                              : "";
+                Label(new Rect(r.x + xs[1], y, ws[1], rowH), status, right, c.Eliminated ? UiSkin.Red : UiSkin.LabelBlue, UiSkin.Display, 20);
+                Label(new Rect(r.x + xs[2], y, ws[2], rowH), c.Knockoffs.ToString(), right, col, UiSkin.Display, 24);
+                Label(new Rect(r.x + xs[3], y, ws[3], rowH), c.Falls.ToString(), right, col, UiSkin.Display, 24);
+                int rc = show.RoundCash(c);
+                Label(new Rect(r.x + xs[4], y, ws[4], rowH), (rc >= 0 ? "+" : "-") + Money(Mathf.Abs(rc)), right,
+                    rc >= 0 ? new Color(0.6f, 1f, 0.55f) : new Color(1f, 0.5f, 0.45f), UiSkin.Display, 22);
+                Label(new Rect(r.x + xs[5], y, ws[5], rowH), Money(show.Cash(c)), right, UiSkin.Gold, UiSkin.Display, 24);
+                y += rowH;
+            }
         }
 
         void DrawCountdown(RaceManager race, ShowManager show, float W, float H)

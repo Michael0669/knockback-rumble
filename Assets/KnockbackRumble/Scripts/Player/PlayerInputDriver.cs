@@ -22,7 +22,8 @@ namespace KnockbackRumble
         /// <summary>Who the camera is following after you finish (null = yourself).</summary>
         public static Contestant Spectating { get; private set; }
         int spectateIndex;
-        float finishedAt = -1f;
+        float doneAt = -1f;
+        static PlayerInputDriver instance;
         Camera unityCam;
         float faceAimUntil;
 
@@ -33,12 +34,17 @@ namespace KnockbackRumble
             unityCam = camera.GetComponent<Camera>();
         }
 
-        void Start() => MenuUI.SetPaused(false);
+        void Start()
+        {
+            instance = this;
+            MenuUI.SetPaused(false);
+        }
 
         void OnDestroy()
         {
             if (cam != null) cam.Aiming = false;
             Spectating = null;
+            if (instance == this) instance = null;
         }
 
         void Update()
@@ -60,9 +66,9 @@ namespace KnockbackRumble
                 return;
             }
 
-            if (me.Finished)
+            if (me.Finished || me.Eliminated)
             {
-                FinishedUpdate(kb, mouse, pad);
+                SpectateUpdate(kb, mouse, pad);
                 return;
             }
 
@@ -133,28 +139,30 @@ namespace KnockbackRumble
         }
 
         /// <summary>
-        /// Across the finish line: your dummy walks on to the finish pad by itself, and after a
-        /// moment the camera cuts to someone still running. Left/right click (or LB/RB, or A/D)
-        /// cycles through them.
+        /// You're done for this event (across the finish line, or knocked out of Crumble Plaza).
+        /// Finishers walk on to the finish pad by themselves. After a moment the camera cuts to
+        /// someone still playing: left/right click (or A/D, LB/RB) switches who you watch, and
+        /// 1-4 (or the D-pad) heckles them.
         /// </summary>
-        void FinishedUpdate(Keyboard kb, Mouse mouse, Gamepad pad)
+        void SpectateUpdate(Keyboard kb, Mouse mouse, Gamepad pad)
         {
-            if (finishedAt < 0f) finishedAt = Time.time;
+            if (doneAt < 0f) doneAt = Time.time;
             cam.Aiming = false;
             me.Motor.FacingInput = Vector3.zero;
 
             var race = RaceManager.Instance;
-            Vector3 park = race != null && race.Course != null ? race.Course.FinishParkPoint(me) : transform.position;
-            Vector3 to = Shapes.Flat(park - transform.position);
+            Vector3 to = Vector3.zero;
+            if (me.Finished && race != null && race.Course != null)
+                to = Shapes.Flat(race.Course.FinishParkPoint(me) - transform.position);
             me.Motor.MoveInput = to.magnitude > 1f ? to.normalized * 0.75f : Vector3.zero;
 
-            if (Time.time - finishedAt < 2f || race == null) return;
+            if (Time.time - doneAt < 2f || race == null) return;
 
-            var running = new System.Collections.Generic.List<Contestant>();
+            var playing = new System.Collections.Generic.List<Contestant>();
             foreach (var c in race.Contestants)
-                if (c != null && !c.Finished && c != me) running.Add(c);
+                if (c != null && !c.Finished && !c.Eliminated && c != me) playing.Add(c);
 
-            if (running.Count == 0)
+            if (playing.Count == 0)
             {
                 if (Spectating != null) { Spectating = null; cam.SetTarget(transform); }
                 return;
@@ -166,17 +174,33 @@ namespace KnockbackRumble
             if ((mouse != null && mouse.rightButton.wasPressedThisFrame) || (kb != null && kb.aKey.wasPressedThisFrame) ||
                 (pad != null && pad.leftShoulder.wasPressedThisFrame)) step = -1;
 
-            int current = Spectating != null ? running.IndexOf(Spectating) : -1;
-            int next = current < 0 ? Mathf.Clamp(spectateIndex, 0, running.Count - 1) : current;
-            next = ((next + step) % running.Count + running.Count) % running.Count;
-            if (running[next] != Spectating)
+            int current = Spectating != null ? playing.IndexOf(Spectating) : -1;
+            int next = current < 0 ? Mathf.Clamp(spectateIndex, 0, playing.Count - 1) : current;
+            next = ((next + step) % playing.Count + playing.Count) % playing.Count;
+            if (playing[next] != Spectating)
             {
-                Spectating = running[next];
+                Spectating = playing[next];
                 spectateIndex = next;
                 cam.SetTarget(Spectating.transform);
                 if (step != 0) Sfx.Ui("ui_click");
             }
+
+            // Heckles
+            HeckleKind? h = null;
+            if ((kb != null && kb.digit1Key.wasPressedThisFrame) || (pad != null && pad.dpad.up.wasPressedThisFrame)) h = HeckleKind.Tomato;
+            if ((kb != null && kb.digit2Key.wasPressedThisFrame) || (pad != null && pad.dpad.right.wasPressedThisFrame)) h = HeckleKind.Boo;
+            if ((kb != null && kb.digit3Key.wasPressedThisFrame) || (pad != null && pad.dpad.down.wasPressedThisFrame)) h = HeckleKind.Horn;
+            if ((kb != null && kb.digit4Key.wasPressedThisFrame) || (pad != null && pad.dpad.left.wasPressedThisFrame)) h = HeckleKind.Fart;
+            if (h.HasValue && Spectating != null && HeckleReady)
+            {
+                nextHeckle = Time.time + Heckles.Cooldown;
+                Heckles.Send(me, Spectating, h.Value);
+            }
         }
+
+        float nextHeckle;
+        public static bool HeckleReady => instance != null && Time.time >= instance.nextHeckle;
+        public static float HeckleCooldownLeft => instance != null ? Mathf.Max(0f, instance.nextHeckle - Time.time) : 0f;
 
         /// <summary>Shoot toward whatever is under the crosshair.</summary>
         Vector3 AimDirection()

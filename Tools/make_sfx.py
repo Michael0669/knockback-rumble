@@ -332,6 +332,34 @@ def hazards():
     save("tile_fall", lp(noise(1.0), 260) * env(1.0, 0.03, 0.9, 0, 0) * 1.5, 0.6)
 
 
+def heckles():
+    # Crowd boo: a dozen "ooo" voices sliding down
+    d = 1.3
+    boo = np.zeros(int(SR * d))
+    for _ in range(12):
+        f0 = rng.uniform(110, 230)
+        start = rng.uniform(0, 0.12)
+        dur = d - start
+        v = osc(sweep(f0, f0 * 0.82, dur) * (1 + 0.02 * np.sin(2 * np.pi * rng.uniform(4, 7) * t_(dur))), dur, "saw")
+        v = bp(v, 220, 420) + bp(v, 700, 1000) * 0.35
+        v = v * env(dur, 0.12, 0.2, 0.8, 0.35)
+        i = int(SR * start)
+        boo[i:i + len(v)] += v[:len(boo) - i]
+    boo += bp(noise(d), 200, 900) * env(d, 0.1, 0.2, 0.6, 0.4) * 0.15
+    save("boo", boo, 0.75)
+    # Fart: buzzy, wobbly, a little wet at the end
+    d = 0.75
+    x = np.linspace(0, 1, int(SR * d))
+    f = 95 + 25 * np.sin(2 * np.pi * 3.2 * x) + rng.normal(0, 6, len(x)) - 30 * x
+    buzz = osc(f, d, "saw") * (0.65 + 0.35 * np.sign(np.sin(2 * np.pi * 23 * t_(d))))
+    buzz = lp(buzz, 850) + lp(noise(d), 400) * 0.25
+    wet = at(bp(noise(0.12), 300, 1500) * decay(0.12, 30) * 0.6, d - 0.1)
+    save("fart", mix(drive(buzz * env(d, 0.01, 0.1, 0.9, 0.12), 2), wet), 0.8)
+    # Tomato splat (wet)
+    sq = bp(noise(0.3), 400, 3500) * decay(0.3, 14) + lp(noise(0.3), 300) * decay(0.3, 20) * 0.8
+    save("tomato", mix(sq, at(bp(noise(0.08), 1500, 5000) * decay(0.08, 50) * 0.4, 0.05)), 0.75)
+
+
 # ---------------------------------------------------------------- music
 
 def drums(bars, bpm, swing=0.0, busy=True):
@@ -498,4 +526,5 @@ if __name__ == "__main__":
     print("Writing sounds to", os.path.normpath(OUT))
     ui(); show(); weapons(); hits(); movement(); cash(); gadgets(); streaks(); hazards()
     music_game(); music_menu(); music_show()
+    heckles()
     print("Done.")

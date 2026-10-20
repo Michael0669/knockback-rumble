@@ -53,6 +53,7 @@ namespace KnockbackRumble
             var motor = me.Motor;
             Vector3 pos = transform.position;
 
+            if (me.Finished || me.Eliminated) MaybeHeckle(dt);
             if (me.Finished)
             {
                 // Walk on past the line to a spot on the finish pad, then celebrate.
@@ -131,6 +132,24 @@ namespace KnockbackRumble
             }
 
             Fight(dt);
+        }
+
+        float heckleTimer = -1f;
+
+        /// <summary>Done for the event: now and then, heckle someone still playing.</summary>
+        void MaybeHeckle(float dt)
+        {
+            if (heckleTimer < 0f) heckleTimer = Random.Range(5f, 10f);
+            heckleTimer -= dt;
+            if (heckleTimer > 0f) return;
+            heckleTimer = Random.Range(8f, 16f);
+            var race = RaceManager.Instance;
+            if (race == null || race.State != RaceManager.Phase.Racing) return;
+            var playing = new System.Collections.Generic.List<Contestant>();
+            foreach (var c in race.Contestants)
+                if (c != null && c != me && !c.Finished && !c.Eliminated) playing.Add(c);
+            if (playing.Count == 0) return;
+            Heckles.Send(me, playing[Random.Range(0, playing.Count)], (HeckleKind)Random.Range(1, 5));
         }
 
         // ---------- Where to go ----------

@@ -44,6 +44,7 @@ namespace KnockbackRumble
         Boom = 66,          // gadget id, position, radius
         StreakCall = 67,    // caller netId, streak, bomb count, then (position, delay) per bomb
         Loadout = 68,       // netId + 6 loadout bytes (sent by the owner at round start)
+        Heckle = 69,        // from netId, target netId, kind
     }
 
     public static class NetProtocol
