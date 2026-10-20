@@ -38,7 +38,10 @@ namespace KnockbackRumble
         public const int FinishOther = 100;
         public static readonly int[] SurvivorPayout = { 300, 150, 75 };
         public const int BagCount = 3;
-        public const float NextRoundDelay = 10f;
+        public const float NextRoundDelay = 8f;
+
+        /// <summary>How long the loading screen (rules and controls) stays up before each event's countdown.</summary>
+        public static float LoadingTimeFor(int round) => round == 0 ? 10f : 8f;
         const float BagDropKnock = 7f;
         const float RegrabDelay = 1.5f;
 

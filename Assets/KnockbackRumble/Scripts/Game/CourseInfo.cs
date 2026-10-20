@@ -33,6 +33,55 @@ namespace KnockbackRumble
             }
         }
 
+        /// <summary>The rules, one short line each, for the loading screen.</summary>
+        public static string[] Rules(EventKind k)
+        {
+            string ko = "Knock someone off: +$" + ShowManager.KnockoffCash + ".   Fall off: -$" + ShowManager.FallPenalty + ".";
+            switch (k)
+            {
+                case EventKind.CashGrab:
+                    return new[]
+                    {
+                        ShowManager.BagCount + " money bags sit on the floor under gold beams. Touch one to grab it.",
+                        "Hold a bag for +$" + ShowManager.BagPerSecond + " every second. One bag per person.",
+                        "Take a big hit and the bag pops loose. Shoot the carriers and steal their income!",
+                        ko + "   No rails, so watch the edge.",
+                        "Ends when the clock runs out.",
+                    };
+                case EventKind.Crumble:
+                    return new[]
+                    {
+                        "Tiles flash orange, then drop out. Keep moving onto solid ground.",
+                        "+$" + ShowManager.StandingPerSecond + " every second you're still standing.",
+                        "Fall ONCE and you're out. You watch the rest from the Losers' Lounge.",
+                        "Last ones standing get $" + ShowManager.SurvivorPayout[0] + " / $" + ShowManager.SurvivorPayout[1] +
+                            " / $" + ShowManager.SurvivorPayout[2] + ".   Knock-offs still pay +$" + ShowManager.KnockoffCash + ".",
+                        "Ends when one dummy is left or the clock runs out.",
+                    };
+                default:
+                    return new[]
+                    {
+                        "Run the obstacle course to the finish line.",
+                        "First four across get $" + ShowManager.FinishPayout[0] + " / $" + ShowManager.FinishPayout[1] + " / $" +
+                            ShowManager.FinishPayout[2] + " / $" + ShowManager.FinishPayout[3] + ". Everyone else who finishes gets $" +
+                            ShowManager.FinishOther + ".",
+                        ko + "   You respawn at your last checkpoint.",
+                        "Ends when 5 dummies finish or the clock runs out.",
+                    };
+            }
+        }
+
+        /// <summary>One tip per event for the loading screen.</summary>
+        public static string Tip(EventKind k)
+        {
+            switch (k)
+            {
+                case EventKind.CashGrab: return "Getting hit pays a little \"pain pay\", so being a target isn't all bad.";
+                case EventKind.Crumble: return "The outside goes first. Shove people toward the holes.";
+                default: return "Rocket Launcher? Shoot your feet and jump to reach the purple Express Lane.";
+            }
+        }
+
         /// <summary>How long the event lasts (seconds after GO).</summary>
         public static float Duration(EventKind k)
         {

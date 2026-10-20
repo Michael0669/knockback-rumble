@@ -38,6 +38,8 @@ namespace KnockbackRumble
         public int Seed { get; private set; }
         public float TimeLimit => Events.Duration(Kind);
         public float TimeLeft => Mathf.Max(0f, TimeLimit - Clock);
+        /// <summary>Before the countdown: the loading screen with the rules is up.</summary>
+        public bool Loading => State == Phase.Countdown && Clock > countdownTime;
         /// <summary>Gauntlet: how many finishers end the event.</summary>
         public int FinishTarget { get; private set; }
         public CourseInfo Course { get; private set; }

@@ -170,7 +170,8 @@ namespace KnockbackRumble
         {
             var kind = ShowManager.KindFor(round);
             int seed = Random.Range(1, int.MaxValue);
-            float start = Net.Time + race.countdownTime;
+            // Loading screen (rules + controls), then the countdown, then GO.
+            float start = Net.Time + ShowManager.LoadingTimeFor(round) + race.countdownTime;
             if (Net.Online)
             {
                 var w = writer.Begin(MsgType.StartRace).Float(start).Byte((byte)kind).Byte((byte)round).Int(seed)

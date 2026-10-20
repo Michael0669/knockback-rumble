@@ -12,6 +12,12 @@ namespace KnockbackRumble
     /// </summary>
     public static class VoiceDirector
     {
+        /// <summary>
+        /// Master switch for every spoken line (announcers and bot barks, audio and subtitles).
+        /// Off for now: the placeholder robot voices got annoying. Flip to true to bring them back.
+        /// </summary>
+        public static bool Enabled = false;
+
         public static float Breath = 0.6f;          // silence after any line
         public static float AnnouncerGap = 4f;      // between unforced announcer lines
         public static float BotGap = 7f;            // between any two bot barks
@@ -30,11 +36,11 @@ namespace KnockbackRumble
         public static bool Quiet => Time.time >= busyUntil + Breath;
 
         public static bool MayAnnounce(bool force) =>
-            force || (Quiet && Time.time - lastAnnouncer >= AnnouncerGap);
+            Enabled && (force || (Quiet && Time.time - lastAnnouncer >= AnnouncerGap));
 
         public static bool MayBark(Vector3 speakerPosition)
         {
-            if (!Quiet || Time.time - lastBot < BotGap) return false;
+            if (!Enabled || !Quiet || Time.time - lastBot < BotGap) return false;
             var cam = Camera.main;
             return cam == null || Vector3.Distance(cam.transform.position, speakerPosition) <= BotHearingRange;
         }

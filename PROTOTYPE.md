@@ -23,8 +23,14 @@ loadout items.
 3. Open the project in Unity and wait for scripts to compile. The Console should show no red errors.
 4. **Knockback Rumble → Build Show Scene**. This rebuilds the scene with all three arenas. (If you skip it,
    the game builds the two new arenas when you press Play, so old scenes still work.)
-5. **Knockback Rumble → Voices → Generate Placeholder Voices** to voice the new announcer lines.
-6. Press **Play**. You land on the main menu.
+5. Press **Play**. You land on the main menu.
+
+Spoken lines (announcers and bot barks) are switched off for now. To bring them back, set
+`VoiceDirector.Enabled = true` in `Scripts/Audio/VoiceDirector.cs`, then run
+**Knockback Rumble → Voices → Generate Placeholder Voices**.
+
+Before every event a **loading screen** shows the rules, the controls, your loadout and the cash standings
+for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countdown starts.
 
 ## The menu
 
