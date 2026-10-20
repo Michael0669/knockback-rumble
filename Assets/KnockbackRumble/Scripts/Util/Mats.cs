@@ -144,7 +144,18 @@ namespace KnockbackRumble
             go.transform.localScale = scale;
             if (euler.HasValue) go.transform.localEulerAngles = euler.Value;
             go.GetComponent<Renderer>().sharedMaterial = mat;
-            if (!keepCollider) Object.DestroyImmediate(go.GetComponent<Collider>());
+            if (!keepCollider)
+            {
+                var col = go.GetComponent<Collider>();
+                if (Application.isPlaying)
+                {
+                    // In play mode this can run inside a physics callback (e.g. hit effects spawned on a bump),
+                    // where DestroyImmediate isn't allowed. Switch it off now, remove it at the end of the frame.
+                    col.enabled = false;
+                    Object.Destroy(col);
+                }
+                else Object.DestroyImmediate(col);
+            }
             return go;
         }
 
