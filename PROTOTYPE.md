@@ -102,7 +102,7 @@ app, and it's expected.
 ```
 Packages/com.rlabrecque.steamworks.net/   Steamworks.NET (MIT license) - talks to Steam
 Assets/KnockbackRumble/
-  Art/Resources/UI/  menu art + fonts (made by Tools/make_ui_art.py; fonts are OFL / Apache licensed)
+  Art/Resources/UI/  menu art (PNG files saved as .bytes) + fonts (made by Tools/make_ui_art.py; fonts are OFL / Apache licensed)
   Editor/            Knockback Rumble menu, voice generator, build step (writes steam_appid.txt next to builds)
   Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual, Contestant
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera
