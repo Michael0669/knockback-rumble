@@ -53,9 +53,19 @@ namespace KnockbackRumble
             var motor = me.Motor;
             Vector3 pos = transform.position;
 
-            if (me.Finished || me.Eliminated)
+            if (me.Finished)
             {
-                // Done (or in the Losers' Lounge): hop around.
+                // Walk on past the line to a spot on the finish pad, then celebrate.
+                Vector3 to = Shapes.Flat(course.FinishParkPoint(me) - pos);
+                motor.FacingInput = Vector3.zero;
+                if (to.magnitude > 1f) { motor.MoveInput = to.normalized * 0.75f; return; }
+                motor.MoveInput = Vector3.zero;
+                if (motor.Grounded && Random.value < dt * 0.8f) motor.QueueJump();
+                return;
+            }
+            if (me.Eliminated)
+            {
+                // In the Losers' Lounge: hop around.
                 motor.MoveInput = Vector3.zero;
                 motor.FacingInput = Vector3.zero;
                 if (motor.Grounded && Random.value < dt * 0.8f) motor.QueueJump();

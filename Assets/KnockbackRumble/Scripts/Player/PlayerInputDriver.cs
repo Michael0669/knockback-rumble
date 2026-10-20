@@ -18,6 +18,11 @@ namespace KnockbackRumble
 
         Contestant me;
         ThirdPersonCamera cam;
+
+        /// <summary>Who the camera is following after you finish (null = yourself).</summary>
+        public static Contestant Spectating { get; private set; }
+        int spectateIndex;
+        float finishedAt = -1f;
         Camera unityCam;
         float faceAimUntil;
 
@@ -33,6 +38,7 @@ namespace KnockbackRumble
         void OnDestroy()
         {
             if (cam != null) cam.Aiming = false;
+            Spectating = null;
         }
 
         void Update()
@@ -51,6 +57,12 @@ namespace KnockbackRumble
             {
                 me.Motor.MoveInput = Vector3.zero;
                 cam.Aiming = false;
+                return;
+            }
+
+            if (me.Finished)
+            {
+                FinishedUpdate(kb, mouse, pad);
                 return;
             }
 
@@ -118,6 +130,52 @@ namespace KnockbackRumble
 
             // Face the crosshair while aiming or just after shooting; otherwise face where you run.
             me.Motor.FacingInput = aim || Time.time < faceAimUntil ? cam.FlatForward : Vector3.zero;
+        }
+
+        /// <summary>
+        /// Across the finish line: your dummy walks on to the finish pad by itself, and after a
+        /// moment the camera cuts to someone still running. Left/right click (or LB/RB, or A/D)
+        /// cycles through them.
+        /// </summary>
+        void FinishedUpdate(Keyboard kb, Mouse mouse, Gamepad pad)
+        {
+            if (finishedAt < 0f) finishedAt = Time.time;
+            cam.Aiming = false;
+            me.Motor.FacingInput = Vector3.zero;
+
+            var race = RaceManager.Instance;
+            Vector3 park = race != null && race.Course != null ? race.Course.FinishParkPoint(me) : transform.position;
+            Vector3 to = Shapes.Flat(park - transform.position);
+            me.Motor.MoveInput = to.magnitude > 1f ? to.normalized * 0.75f : Vector3.zero;
+
+            if (Time.time - finishedAt < 2f || race == null) return;
+
+            var running = new System.Collections.Generic.List<Contestant>();
+            foreach (var c in race.Contestants)
+                if (c != null && !c.Finished && c != me) running.Add(c);
+
+            if (running.Count == 0)
+            {
+                if (Spectating != null) { Spectating = null; cam.SetTarget(transform); }
+                return;
+            }
+
+            int step = 0;
+            if ((mouse != null && mouse.leftButton.wasPressedThisFrame) || (kb != null && kb.dKey.wasPressedThisFrame) ||
+                (pad != null && pad.rightShoulder.wasPressedThisFrame)) step = 1;
+            if ((mouse != null && mouse.rightButton.wasPressedThisFrame) || (kb != null && kb.aKey.wasPressedThisFrame) ||
+                (pad != null && pad.leftShoulder.wasPressedThisFrame)) step = -1;
+
+            int current = Spectating != null ? running.IndexOf(Spectating) : -1;
+            int next = current < 0 ? Mathf.Clamp(spectateIndex, 0, running.Count - 1) : current;
+            next = ((next + step) % running.Count + running.Count) % running.Count;
+            if (running[next] != Spectating)
+            {
+                Spectating = running[next];
+                spectateIndex = next;
+                cam.SetTarget(Spectating.transform);
+                if (step != 0) Sfx.Ui("ui_click");
+            }
         }
 
         /// <summary>Shoot toward whatever is under the crosshair.</summary>

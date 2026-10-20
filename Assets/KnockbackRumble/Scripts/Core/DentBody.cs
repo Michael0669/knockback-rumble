@@ -39,6 +39,8 @@ namespace KnockbackRumble
         /// <summary>Fired on every hit: (victim, knockback strength, attacker or null, weapon/hazard name).</summary>
         public event Action<DentBody, float, GameObject, string> Launched;
 
+        Contestant contestant;
+
         void Awake() => Motor = GetComponent<DummyMotor>();
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }
         void OnDisable() => All.Remove(this);
@@ -50,6 +52,10 @@ namespace KnockbackRumble
         /// <param name="minLift">Minimum upward share of the launch direction.</param>
         public void Hit(Vector3 direction, float baseKnock, float dentAdd, GameObject attacker, string weapon, float minLift = 0.25f)
         {
+            // Already across the finish line: untouchable.
+            if (contestant == null) contestant = GetComponent<Contestant>();
+            if (contestant != null && contestant.Finished) return;
+
             // You hit someone: tick + hit marker.
             if (attacker != null && attacker != gameObject)
             {

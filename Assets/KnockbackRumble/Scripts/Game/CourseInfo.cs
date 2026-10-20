@@ -117,6 +117,21 @@ namespace KnockbackRumble
         [Tooltip("Crumble Plaza: where knocked-out players wait.")]
         public Vector3 loungePoint;
 
+        Transform finishLine;
+
+        /// <summary>The Gauntlet: a spot past the finish line where this dummy walks to and celebrates.</summary>
+        public Vector3 FinishParkPoint(Contestant c)
+        {
+            if (finishLine == null)
+            {
+                var line = GetComponentInChildren<FinishLine>(true);
+                if (line == null) return c.transform.position;
+                finishLine = line.transform;
+            }
+            int slot = c.NetId % 8, row = c.NetId / 8;
+            return finishLine.position + new Vector3(-7f + slot * 1.9f, 0f, 5f + row * 2f);
+        }
+
         void Awake() { if (!All.Contains(this)) All.Add(this); }
         void OnDestroy() => All.Remove(this);
 

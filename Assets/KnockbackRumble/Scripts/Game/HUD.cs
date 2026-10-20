@@ -18,12 +18,13 @@ namespace KnockbackRumble
         {
             if (big != null) return;
             white = Texture2D.whiteTexture;
-            huge = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 96, alignment = TextAnchor.MiddleCenter };
-            big = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 64, alignment = TextAnchor.MiddleCenter };
-            mid = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 30, alignment = TextAnchor.MiddleCenter };
+            // No word wrap on these: text that's too wide shrinks to fit instead (see Label).
+            huge = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 96, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+            big = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 64, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+            mid = new GUIStyle(GUI.skin.label) { font = UiSkin.Display, fontSize = 30, alignment = TextAnchor.MiddleCenter, wordWrap = false };
             small = new GUIStyle(GUI.skin.label) { font = UiSkin.BodyBold, fontSize = 20, alignment = TextAnchor.UpperLeft };
             center = new GUIStyle(GUI.skin.label) { font = UiSkin.Body, fontSize = 22, alignment = TextAnchor.MiddleCenter, wordWrap = true };
-            left = new GUIStyle(GUI.skin.label) { font = UiSkin.Body, fontSize = 22, alignment = TextAnchor.MiddleLeft, clipping = TextClipping.Clip };
+            left = new GUIStyle(GUI.skin.label) { font = UiSkin.Body, fontSize = 22, alignment = TextAnchor.MiddleLeft, clipping = TextClipping.Clip, wordWrap = false };
             right = new GUIStyle(left) { alignment = TextAnchor.MiddleRight };
         }
 
@@ -69,9 +70,11 @@ namespace KnockbackRumble
             {
                 DrawCash(race, show, p);
                 DrawLeaderboard(race, show, W);
-                DrawPlayerPanel(race, show, p, W, H);
+                bool done = p != null && p.Finished;
+                if (!done) DrawPlayerPanel(race, show, p, W, H);
                 DrawToast(W, H);
-                if (!MenuUI.Paused && p != null && !p.Eliminated && !scoped) DrawCrosshair(W, H);
+                if (!MenuUI.Paused && p != null && !p.Eliminated && !done && !scoped) DrawCrosshair(W, H);
+                if (done) DrawSpectating(p, W, H);
                 if (!MenuUI.Paused && p != null) DrawHitMarker(W, H);
                 if (p != null && p.Eliminated) DrawEliminated(W, H);
             }
@@ -301,6 +304,19 @@ namespace KnockbackRumble
         {
             if (Announcer.Toast == null || Time.time - Announcer.ToastTime > 2.2f) return;
             Label(new Rect(W / 2f - 500f, H * 0.62f, 1000f, 60f), Announcer.Toast, mid, UiSkin.Gold);
+        }
+
+        void DrawSpectating(Contestant p, float W, float H)
+        {
+            var r = new Rect(W / 2f - 380f, H - 150f, 760f, 104f);
+            UiSkin.Pill(r, new Color(0.1f, 0.09f, 0.16f, 0.9f));
+            var watching = PlayerInputDriver.Spectating;
+            string head = "YOU FINISHED #" + p.FinishPlace + "!";
+            Label(new Rect(r.x, r.y + 6f, r.width, 48f), head, mid, UiSkin.Gold, UiSkin.Display, 36);
+            string sub = watching != null
+                ? "WATCHING  " + watching.DisplayName.ToUpperInvariant() + "     <  LEFT / RIGHT CLICK  >"
+                : "Waiting for the others to finish...";
+            Label(new Rect(r.x + 20f, r.y + 54f, r.width - 40f, 40f), sub, mid, UiSkin.Cream, UiSkin.Display, 24);
         }
 
         void DrawEliminated(float W, float H)

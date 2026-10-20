@@ -207,6 +207,14 @@ namespace KnockbackRumble
                 return;
             }
 
+            // Finished (and somehow fell): back to the finish pad, no penalty.
+            if (c.Finished && Course != null)
+            {
+                c.Motor.Teleport(Course.FinishParkPoint(c) + Vector3.up * 0.5f, Quaternion.identity);
+                c.Dent.ResetDent();
+                return;
+            }
+
             var dent = c.Dent;
             bool credited = dent.LastAttacker != null && Time.time - dent.LastHitTime < knockoffCreditTime;
             var attacker = credited ? dent.LastAttacker.GetComponent<Contestant>() : null;
@@ -380,6 +388,7 @@ namespace KnockbackRumble
         {
             if (c.Finished) return;
             c.Finished = true;
+            if (c.IsLocal) c.Weapons.Disabled = true; // done: no more shooting
             c.FinishPlace = place;
             c.FinishTime = time;
             Finishers.Add(c);
