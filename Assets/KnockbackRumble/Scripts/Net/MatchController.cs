@@ -248,7 +248,23 @@ namespace KnockbackRumble
         {
             if (cam == null) return;
             cam.SetTarget(null);
-            cam.transform.SetPositionAndRotation(new Vector3(12f, 14f, -16f), Quaternion.Euler(28f, -25f, 0f));
+            DriftMenuCamera();
+        }
+
+        /// <summary>Behind the menus the camera slowly drifts over the course, like a TV crane shot.</summary>
+        void LateUpdate()
+        {
+            if (!InMatch) DriftMenuCamera();
+        }
+
+        void DriftMenuCamera()
+        {
+            if (cam == null) return;
+            float t = Time.unscaledTime;
+            float along = 0.5f + 0.5f * Mathf.Sin(t * 0.045f);          // creeps up and down the course
+            var pos = new Vector3(Mathf.Sin(t * 0.08f) * 16f, 15f + Mathf.Sin(t * 0.23f) * 1.5f, Mathf.Lerp(-18f, 70f, along));
+            var look = new Vector3(Mathf.Sin(t * 0.06f + 1f) * 4f, 2f, pos.z + 45f);
+            cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(look - pos, Vector3.up));
         }
 
         void OnSessionEnded() => EndMatch();

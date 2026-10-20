@@ -26,9 +26,16 @@ namespace KnockbackRumble
         string portField = NetProtocol.DirectPort.ToString();
         bool showTools;
         Screen lastScreen = Screen.Main;
+        float enteredAt;   // when the current screen appeared (drives the slide-in)
+
+        static float Now => Time.unscaledTime;
+
+        /// <summary>Gentle pulse for the button we want people to press, e.g. 1.0 to 1.025.</summary>
+        static float Pulse(float amount = 0.025f, float speed = 3.2f) => 1f + amount * (0.5f + 0.5f * Mathf.Sin(Now * speed));
 
         void Start()
         {
+            enteredAt = Now;
             var steam = SteamService.Instance;
             nameField = steam != null && steam.Ready && !string.IsNullOrEmpty(steam.PersonaName) ? steam.PersonaName : "Dummy";
         }
@@ -69,27 +76,34 @@ namespace KnockbackRumble
             {
                 GUI.FocusControl(null); // drop text-box focus between screens
                 lastScreen = screen;
+                enteredAt = Now;
             }
+
+            if (screen == Screen.Race)
+            {
+                if (Net.Online) DrawOnlineStrip(session, W);
+                if (Paused) DrawPause(match, W, H, oy);
+                return;
+            }
+
+            UiSkin.StageBackground(W, H);
+
+            // Menus slide up and fade in when they appear.
+            float intro = Mathf.Clamp01((Now - enteredAt) / 0.45f);
+            var baseMatrix = GUI.matrix;
+            var baseColor = GUI.color;
+            GUI.matrix = baseMatrix * Matrix4x4.Translate(new Vector3(0f, (1f - UiSkin.EaseOutBack(intro)) * 60f, 0f));
+            GUI.color = new Color(baseColor.r, baseColor.g, baseColor.b, baseColor.a * Mathf.Clamp01(intro * 1.6f));
 
             switch (screen)
             {
-                case Screen.Race:
-                    if (Net.Online) DrawOnlineStrip(session, W);
-                    if (Paused) DrawPause(match, W, H, oy);
-                    break;
-                case Screen.Connecting:
-                    UiSkin.StageBackground(W, H);
-                    DrawConnecting(session, W, oy);
-                    break;
-                case Screen.Lobby:
-                    UiSkin.StageBackground(W, H);
-                    DrawLobby(session, match, W, oy);
-                    break;
-                default:
-                    UiSkin.StageBackground(W, H);
-                    DrawMain(session, match, W, H, oy);
-                    break;
+                case Screen.Connecting: DrawConnecting(session, W, oy); break;
+                case Screen.Lobby: DrawLobby(session, match, W, oy); break;
+                default: DrawMain(session, match, W, H, oy); break;
             }
+
+            GUI.matrix = baseMatrix;
+            GUI.color = baseColor;
         }
 
         // =====================================================================
@@ -102,16 +116,20 @@ namespace KnockbackRumble
             bool steamReady = steam != null && steam.Ready;
             float cx = W / 2f;
 
-            float lw = 860f;
-            UiSkin.Image(new Rect(cx - lw / 2f, oy + 14f, lw, UiSkin.HeightFor(UiSkin.Logo, lw)), UiSkin.Logo);
+            DrawLogo(new Rect(cx - 430f, oy + 14f, 860f, UiSkin.HeightFor(UiSkin.Logo, 860f)));
 
             float px = cx - 340f, py = oy + 470f, pw = 680f, ph = 500f;
             UiSkin.Panel(new Rect(px, py, pw, ph));
             UiSkin.Heading(new Rect(px + 40f, py + 26f, 300f, 30f), "YOUR NAME", 24, UiSkin.LabelBlue);
             nameField = UiSkin.TextField(new Rect(px + 40f, py + 60f, 600f, 66f), nameField, 20, "name");
 
-            if (UiSkin.Button(new Rect(px + 40f, py + 148f, 600f, 104f), "HOST A GAME", UiSkin.Yellow,
-                    steamReady ? "Invite your Steam friends" : "Needs Steam running", 44, steamReady))
+            var hostRect = new Rect(px + 40f, py + 148f, 600f, 104f);
+            var before = GUI.matrix;
+            if (steamReady) GUI.matrix = before * UiSkin.Around(hostRect.center, 0f, Pulse());
+            bool host = UiSkin.Button(hostRect, "HOST A GAME", UiSkin.Yellow,
+                steamReady ? "Invite your Steam friends" : "Needs Steam running", 44, steamReady);
+            GUI.matrix = before;
+            if (host)
             {
                 session.LocalName = CleanName();
                 session.HostSteam();
@@ -203,7 +221,7 @@ namespace KnockbackRumble
             var voice = NetVoice.Instance;
 
             float tw = 640f;
-            UiSkin.Image(new Rect(cx - tw / 2f, oy + 30f, tw, UiSkin.HeightFor(UiSkin.TitleLobby, tw)), UiSkin.TitleLobby);
+            DrawWobbly(new Rect(cx - tw / 2f, oy + 30f, tw, UiSkin.HeightFor(UiSkin.TitleLobby, tw)), UiSkin.TitleLobby, 0.6f);
             var sub = new Rect(cx - 230f, oy + 148f, 460f, 42f);
             UiSkin.Pill(sub, UiSkin.PillDark);
             UiSkin.Heading(sub, session.UsingSteam ? "STEAM LOBBY  -  FRIENDS ONLY" : "DIRECT CONNECT  -  PORT " + Port(), 22,
@@ -261,8 +279,12 @@ namespace KnockbackRumble
                         UiSkin.Muted, TextAnchor.MiddleCenter, false);
                 }
 
-                if (UiSkin.Button(new Rect(rx + 32f, ry + 392f, rw - 64f, 120f), "START THE SHOW", UiSkin.Yellow, "Everyone in the lobby races", 46))
-                    match.HostStartRace();
+                var startRect = new Rect(rx + 32f, ry + 392f, rw - 64f, 120f);
+                var m = GUI.matrix;
+                GUI.matrix = m * UiSkin.Around(startRect.center, 0f, Pulse());
+                bool start = UiSkin.Button(startRect, "START THE SHOW", UiSkin.Yellow, "Everyone in the lobby races", 46);
+                GUI.matrix = m;
+                if (start) match.HostStartRace();
             }
             else
             {
@@ -284,10 +306,12 @@ namespace KnockbackRumble
         {
             UiSkin.Card(r);
             var color = MatchController.HumanColors[p.Color % MatchController.HumanColors.Length];
-            UiSkin.Image(new Rect(r.x + 16f, r.y + 16f, 84f, 84f), UiSkin.Avatar, color);
-
             bool you = p.Id == session.LocalId;
             bool talking = voice != null && voice.IsTalking(p.Id);
+
+            // Avatars bob when that player is talking.
+            float hop = talking ? -Mathf.Abs(Mathf.Sin(Now * 12f)) * 6f : 0f;
+            UiSkin.Image(new Rect(r.x + 16f, r.y + 16f + hop, 84f, 84f), UiSkin.Avatar, color);
             bool badges = p.IsHost || you || talking;
 
             float nameY = badges ? r.y + 16f : r.y + 36f;
@@ -418,6 +442,29 @@ namespace KnockbackRumble
         // =====================================================================
         // Helpers
         // =====================================================================
+
+        /// <summary>The logo pops in, then gently bobs, sways and breathes.</summary>
+        void DrawLogo(Rect r)
+        {
+            float pop = Mathf.Lerp(0.82f, 1f, UiSkin.EaseOutBack((Now - enteredAt) / 0.6f));
+            float breathe = 1f + 0.015f * Mathf.Sin(Now * 2.1f);
+            float angle = Mathf.Sin(Now * 0.9f) * 1.5f;
+            r.y += Mathf.Sin(Now * 1.6f) * 6f;
+            var old = GUI.matrix;
+            GUI.matrix = old * UiSkin.Around(r.center, angle, pop * breathe);
+            UiSkin.Image(r, UiSkin.Logo);
+            GUI.matrix = old;
+        }
+
+        /// <summary>A title image with a slow bob and sway.</summary>
+        static void DrawWobbly(Rect r, Texture2D tex, float strength)
+        {
+            r.y += Mathf.Sin(Now * 1.4f) * 5f * strength;
+            var old = GUI.matrix;
+            GUI.matrix = old * UiSkin.Around(r.center, Mathf.Sin(Now * 0.8f) * 1.5f * strength, 1f + 0.012f * Mathf.Sin(Now * 2f));
+            UiSkin.Image(r, tex);
+            GUI.matrix = old;
+        }
 
         static string Dots() => new string('.', 1 + (int)(Time.unscaledTime * 2f) % 3);
 

@@ -133,7 +133,7 @@ namespace KnockbackRumble
         {
             if (!Repaint) return;
             var old = GUI.color;
-            GUI.color = color;
+            GUI.color = old * color; // multiply, so fades applied by the caller still work
             GUI.DrawTexture(r, white);
             GUI.color = old;
         }
@@ -142,7 +142,7 @@ namespace KnockbackRumble
         {
             if (!Repaint || tex == null) return;
             var old = GUI.color;
-            GUI.color = tint;
+            GUI.color = old * tint;
             GUI.DrawTexture(r, tex, ScaleMode.StretchToFill, true);
             GUI.color = old;
         }
@@ -152,10 +152,39 @@ namespace KnockbackRumble
         /// <summary>Height of a texture drawn at the given width (keeps its shape).</summary>
         public static float HeightFor(Texture2D tex, float width) => tex == null ? 0f : width * tex.height / tex.width;
 
-        public static void StripeBand(Rect r)
+        /// <summary>Hazard stripes; scroll &gt; 0 makes them crawl sideways.</summary>
+        public static void StripeBand(Rect r, float scroll = 0f)
         {
             if (!Repaint || Stripes == null) return;
-            GUI.DrawTextureWithTexCoords(r, Stripes, new Rect(0f, 0f, r.width / 64f, r.height / 64f));
+            GUI.DrawTextureWithTexCoords(r, Stripes, new Rect(scroll, 0f, r.width / 64f, r.height / 64f));
+        }
+
+        // ---------- Motion helpers ----------
+
+        /// <summary>A transform that rotates (degrees) and scales around a point in layout space.
+        /// Use: var old = GUI.matrix; GUI.matrix = old * UiSkin.Around(...); draw; GUI.matrix = old;</summary>
+        public static Matrix4x4 Around(Vector2 pivot, float angle, float scale) =>
+            Matrix4x4.Translate(new Vector3(pivot.x, pivot.y, 0f)) *
+            Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(0f, 0f, angle), new Vector3(scale, scale, 1f)) *
+            Matrix4x4.Translate(new Vector3(-pivot.x, -pivot.y, 0f));
+
+        /// <summary>0..1 with a small overshoot at the end (for pop-ins).</summary>
+        public static float EaseOutBack(float t)
+        {
+            t = Mathf.Clamp01(t);
+            const float c1 = 1.70158f, c3 = c1 + 1f;
+            float u = t - 1f;
+            return 1f + c3 * u * u * u + c1 * u * u;
+        }
+
+        static void SweepingSpotlight(Rect r, float phase)
+        {
+            float t = Time.unscaledTime;
+            float angle = Mathf.Sin(t * 0.55f + phase) * 16f;
+            var old = GUI.matrix;
+            GUI.matrix = old * Around(new Vector2(r.center.x, r.y + 40f), angle, 1f);
+            Image(r, Spotlight, new Color(1f, 1f, 1f, 0.65f + 0.2f * Mathf.Sin(t * 1.3f + phase)));
+            GUI.matrix = old;
         }
 
         /// <summary>Dim the live course behind the menus, add a vignette, spotlights and hazard stripes.</summary>
@@ -163,10 +192,11 @@ namespace KnockbackRumble
         {
             Fill(new Rect(0f, 0f, W, H), new Color(0.05f, 0.03f, 0.09f, 0.35f));
             Image(new Rect(0f, 0f, W, H), Vignette);
-            Image(new Rect(W / 2f - 760f, -40f, 300f, 640f), Spotlight, new Color(1f, 1f, 1f, 0.8f));
-            Image(new Rect(W / 2f + 460f, -40f, 300f, 640f), Spotlight, new Color(1f, 1f, 1f, 0.8f));
-            StripeBand(new Rect(0f, 0f, W, 18f));
-            StripeBand(new Rect(0f, H - 18f, W, 18f));
+            SweepingSpotlight(new Rect(W / 2f - 760f, -40f, 300f, 640f), 0f);
+            SweepingSpotlight(new Rect(W / 2f + 460f, -40f, 300f, 640f), 2.4f);
+            float crawl = Time.unscaledTime * 0.6f;
+            StripeBand(new Rect(0f, 0f, W, 18f), crawl);
+            StripeBand(new Rect(0f, H - 18f, W, 18f), -crawl);
         }
 
         // ---------- Text ----------
