@@ -63,6 +63,10 @@ namespace KnockbackRumble
         /// <summary>Which character this dummy is (-1 = a random look seeded from its color).</summary>
         public int Character { get; private set; } = -1;
         Color builtColor;
+        /// <summary>The downloaded rigged model, when this character has one (else the built-in soldier).</summary>
+        ModelCharacter rigged;
+        GameObject colorRing;
+        Vector3? gunMuzzle;
 
         public void Build(Color bodyColor, int character = -1)
         {
@@ -81,6 +85,9 @@ namespace KnockbackRumble
             model.gameObject.SetActive(false);
             Destroy(model.gameObject);
             model = null;
+            rigged = null;
+            if (colorRing != null) Destroy(colorRing);
+            colorRing = null;
             gun = null;
             shownWeapon = null;
             hairParts.Clear(); beardParts.Clear(); vestParts.Clear(); pantsParts.Clear(); bootParts.Clear(); gloveParts.Clear();
@@ -93,6 +100,8 @@ namespace KnockbackRumble
 
         void BuildBody(Color bodyColor, CharacterDef def)
         {
+            if (def != null && BuildModel(bodyColor, def)) return;
+
             string hex = ColorUtility.ToHtmlStringRGB(bodyColor);
             int hash = (Mathf.RoundToInt(bodyColor.r * 255f) * 73856093 ^ Mathf.RoundToInt(bodyColor.g * 255f) * 19349663
                         ^ Mathf.RoundToInt(bodyColor.b * 255f) * 83492791) & 0x7fffffff;
@@ -242,6 +251,28 @@ namespace KnockbackRumble
             trail.emitting = false;
         }
 
+        /// <summary>The downloaded character model. False if it isn't there (then we build the soldier).</summary>
+        bool BuildModel(Color bodyColor, CharacterDef def)
+        {
+            model = new GameObject("Model").transform;
+            model.SetParent(transform, false);
+            model.localPosition = new Vector3(0f, 0.9f, 0f); // pivot at the body's center so tumbles look right
+            rigged = ModelCharacter.Create(model, def, bodyColor, 0.9f);
+            if (rigged == null)
+            {
+                Destroy(model.gameObject);
+                model = null;
+                return false;
+            }
+            armL = armR = legL = legR = null;
+            Rig = null;
+            hand = rigged.GunHolder;
+            // A ring in the player's color under the feet, so you can tell everyone apart.
+            colorRing = LowPoly.Make(LowPoly.Torus(28, 4, 0.14f), "ColorRing", transform, new Vector3(0f, 0.04f, 0f), new Vector3(1.25f, 0.2f, 1.25f),
+                Mats.Unlit("Ring_" + ColorUtility.ToHtmlStringRGB(bodyColor), bodyColor));
+            return true;
+        }
+
         static Transform ItemSpace(Transform bone, Vector3 scale)
         {
             var t = new GameObject("Items").transform;
@@ -318,7 +349,8 @@ namespace KnockbackRumble
             if (hand == null || def == shownWeapon) return;
             shownWeapon = def;
             if (gun != null) Destroy(gun.gameObject);
-            gun = def != null ? WeaponModels.Build(def, hand).transform : null;
+            gunMuzzle = null;
+            gun = def != null ? GunModels.Build(def, hand, out gunMuzzle).transform : null;
         }
 
         /// <summary>Where the barrel ends, for muzzle flashes (falls back to the hand).</summary>
@@ -327,6 +359,7 @@ namespace KnockbackRumble
             get
             {
                 if (hand == null) return transform.position + Vector3.up * 1.35f + transform.forward * 0.6f;
+                if (gun != null && gunMuzzle.HasValue) return hand.TransformPoint(gunMuzzle.Value);
                 float len = shownWeapon == WeaponDef.LongShot ? 1.15f : shownWeapon == WeaponDef.RocketLauncher ? 0.8f
                           : shownWeapon == WeaponDef.BoomStick ? 0.74f : 0.45f;
                 float up = shownWeapon == WeaponDef.RocketLauncher ? 0.12f : 0.05f;
@@ -334,15 +367,46 @@ namespace KnockbackRumble
             }
         }
 
-        public void PlayShove() => shoveTimer = 0.2f;
+        public void PlayShove()
+        {
+            shoveTimer = 0.2f;
+            if (rigged != null) rigged.Punch();
+        }
 
         void LateUpdate()
         {
-            if (model == null || motor == null) return;
+            if (model == null) return;
             float dt = Time.deltaTime;
+            if (motor == null)
+            {
+                // The CHARACTER screen preview: just stand there looking good.
+                if (rigged != null) rigged.Drive(0f, true, false, false, false, false, dt);
+                return;
+            }
             Vector3 v = motor.Velocity;
             float speed = new Vector3(v.x, 0f, v.z).magnitude;
             MovementFeel(v, dt);
+
+            if (rigged != null)
+            {
+                if (motor.Stunned)
+                {
+                    if (!wasStunned) tumbleAxis = Random.onUnitSphere;
+                    tumbleAngle += Mathf.Lerp(400f, 900f, Mathf.Clamp01(v.magnitude / 20f)) * dt;
+                    model.localRotation = Quaternion.AngleAxis(tumbleAngle, tumbleAxis);
+                    trail.emitting = v.magnitude > 6f;
+                }
+                else
+                {
+                    trail.emitting = false;
+                    tumbleAngle = 0f;
+                    Quaternion pose = motor.Diving ? Quaternion.Euler(80f, 0f, 0f) : Quaternion.identity;
+                    model.localRotation = Quaternion.Slerp(model.localRotation, pose, 14f * dt);
+                }
+                AnimateRigged(speed, dt);
+                wasStunned = motor.Stunned;
+                return;
+            }
 
             if (motor.Stunned)
             {
@@ -388,6 +452,15 @@ namespace KnockbackRumble
             }
 
             wasStunned = motor.Stunned;
+        }
+
+        /// <summary>The downloaded model animates itself; we just tell it what's going on.</summary>
+        void AnimateRigged(float speed, float dt)
+        {
+            bool holding = gun != null && gun.gameObject.activeSelf;
+            bool celebrating = contestant != null && contestant.Finished;
+            rigged.Drive(speed, motor.Grounded, motor.Stunned, motor.Diving, holding, celebrating, dt);
+            rigged.PlaceGun(transform.rotation);
         }
 
         void MovementFeel(Vector3 v, float dt)

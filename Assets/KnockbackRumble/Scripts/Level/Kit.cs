@@ -142,6 +142,17 @@ namespace KnockbackRumble
             t.SetParent(g, false);
             t.localPosition = basePos;
             t.localEulerAngles = new Vector3(0f, yaw, 0f);
+            // The pack's shipping containers (red or green), stretched to the same size.
+            if (Art.PropBox(color.r >= color.g ? "Environment/Container_Red" : "Environment/Container_Green", t, Vector3.zero, 0f,
+                    new Vector3(2.5f, 2.6f, length)) != null)
+            {
+                if (!string.IsNullOrEmpty(label))
+                {
+                    var sign = Props.Sign(t, label, new Vector3(-1.32f, 1.6f, 0f), 0.16f, Color.white);
+                    if (sign != null) sign.transform.localEulerAngles = new Vector3(0f, 90f, 0f);
+                }
+                return;
+            }
             var paint = M("Kit_Container_" + ColorUtility.ToHtmlStringRGB(color), color);
             var dark = M("Kit_Container_Dark_" + ColorUtility.ToHtmlStringRGB(color), color * 0.7f);
             Box(t, "Box", new Vector3(0f, 1.3f, 0f), new Vector3(2.5f, 2.6f, length), paint);

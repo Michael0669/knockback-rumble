@@ -96,12 +96,33 @@ add it to the list at the top of `MiniGames` (in `MiniGame.cs`) and to `Events.A
 
 ## Characters
 
-**CHARACTER** (main menu, lobby, pause menu) picks who you play as: Sarge, Rookie, Mohawk, Beardo, Doc or Gramps.
-Your vest is always your player color. Everyone sees your pick online, and each bot always plays the same one.
-The list lives in `Scripts/Cosmetics/Characters.cs`. For now they're variations of the built-in low-poly soldier;
-real character models can replace them later.
+**CHARACTER** (main menu, lobby, pause menu) picks who you play as: 12 characters from the downloaded pack
+(SWAT, adventurer, farmer, construction worker, punk, astronaut, king, beach guy, influencer, dude, lawyer and
+Horse Guy). Their main piece of clothing takes your player color, and there's a colored ring under everyone's
+feet. Everyone sees your pick online; each bot always plays the same one. The list is in
+`Scripts/Cosmetics/Characters.cs` (which parts of the model, which material gets your color).
 
 The old outfit shop (hats, shirts...) is switched off. Its code is still in `Scripts/Cosmetics/Cosmetics.cs`.
+
+## Downloaded art
+
+Models live in `Assets/ThirdParty/Resources/` (Characters, Guns, Environment, Vehicles). The original
+.blend / .obj / .gltf files are in `ArtSource/` at the top of the repo, outside `Assets`, so Unity ignores them.
+
+- **Characters:** one rigged file with 12 people and their animations (idle, run, shoot, punch, hit, wave).
+  `Scripts/Core/ModelCharacter.cs` shows one person's parts, scales them to dummy size and plays the animations.
+- **Guns:** pistol (Pop Pistol), shotgun (Boom Stick) and sniper rifle (Long Shot). `Scripts/Weapons/GunModels.cs`
+  measures each model the first time and fits it into the hand. The rocket launcher has no model in the pack,
+  so it keeps the built-in one.
+- **Props and vehicles:** barrels, cones, tires, shipping containers, couches, wrecked cars, junk, a water tower
+  and street lights replace the matching placeholders (`Props.cs`, `Kit.cs`, `MiniKit.cs`).
+
+Anything missing falls back to the old built-in look. To switch all of it off, set `Art.UseThirdParty = false`
+in `Scripts/Util/Art.cs`. The whole game as it was before the downloaded art is saved on the
+**backup/placeholder-art** branch on GitHub.
+
+**After pulling:** run **Knockback Rumble → Build Show Scene** once, so the Gauntlet, Cash Grab and Crumble
+Plaza pick up the new props (the mini-games and characters don't need it).
 
 ## Loadouts
 

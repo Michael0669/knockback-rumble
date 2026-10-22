@@ -32,11 +32,13 @@ namespace KnockbackRumble
 
         public static void Tire(Transform g, Vector3 pos, float size = 1f)
         {
+            if (Art.Prop("Environment/Wheel", g, pos, pos.x * 37f % 360f, 1.6f * size, Art.Fit.Largest) != null) return;
             LowPoly.Make(LowPoly.Torus(12, 5, 0.42f), "Tire", g, pos + Vector3.up * 0.35f * size, new Vector3(1.6f, 1.9f, 1.6f) * size, Rubber);
         }
 
         public static void TireStack(Transform g, Vector3 pos, int count, System.Random rng)
         {
+            if (Art.Prop("Environment/Wheels_Stack", g, pos, (float)rng.NextDouble() * 360f, Mathf.Max(1, count) * 0.62f + 0.3f) != null) return;
             for (int i = 0; i < count; i++)
             {
                 var off = new Vector3((float)rng.NextDouble() * 0.3f - 0.15f, i * 0.62f, (float)rng.NextDouble() * 0.3f - 0.15f);
@@ -46,6 +48,7 @@ namespace KnockbackRumble
 
         public static void Drum(Transform g, Vector3 pos, Color color, bool tipped = false)
         {
+            if (!tipped && Art.Prop("Environment/Barrel", g, pos, pos.z * 53f % 360f, 1.7f) != null) return;
             var mat = M("Prop_Drum_" + ColorUtility.ToHtmlStringRGB(color), color);
             Vector3 euler = tipped ? new Vector3(0f, 0f, 90f) : Vector3.zero;
             Vector3 p = pos + Vector3.up * (tipped ? 0.6f : 0.85f);
@@ -60,6 +63,10 @@ namespace KnockbackRumble
             root.SetParent(g, false);
             root.localPosition = pos;
             root.localEulerAngles = new Vector3(0f, yaw, tilt);
+            // A real (wrecked-looking) vehicle from the pack if we have one.
+            string[] cars = { "Vehicle_Pickup", "Vehicle_Sports", "Vehicle_Truck", "Vehicle_Pickup_Armored", "Vehicle_Sports_Armored", "Vehicle_Truck_Armored" };
+            int pick = Mathf.Abs(Mathf.RoundToInt(pos.x * 7f + pos.z * 13f + yaw)) % cars.Length;
+            if (Art.Prop("Vehicles/" + cars[pick], root, Vector3.zero, 0f, 4.4f, Art.Fit.Length) != null) return;
             var paint = M("Prop_Car_" + ColorUtility.ToHtmlStringRGB(color), color);
             var glass = M("Prop_Glass", new Color(0.25f, 0.35f, 0.45f));
             Shapes.Make(PrimitiveType.Cube, "Body", root, new Vector3(0f, 0.75f, 0f), new Vector3(2f, 0.9f, 4.2f), paint, false);
@@ -94,11 +101,16 @@ namespace KnockbackRumble
                 Rock(g, pos + off, s, mats[rng.Next(mats.Length)], rng.Next(3));
             }
             if (rng.NextDouble() < 0.5) Tire(g, pos + new Vector3(size * 0.4f, size * 0.4f, 0f), 0.9f);
+            // Bits of street junk from the pack.
+            string[] junk = { "Environment/TrashBag_1", "Environment/TrashBag_2", "Environment/Pallet_Broken", "Environment/CinderBlock", "Environment/Pallet" };
+            if (rng.NextDouble() < 0.6)
+                Art.Prop(junk[rng.Next(junk.Length)], g, pos + new Vector3(-size * 0.5f, 0f, -size * 0.3f), (float)rng.NextDouble() * 360f, size * 0.35f, Art.Fit.Largest);
             if (rng.NextDouble() < 0.4) Drum(g, pos + new Vector3(-size * 0.4f, size * 0.25f, size * 0.2f), CarColors[rng.Next(CarColors.Length)], true);
         }
 
         public static void TrafficCone(Transform g, Vector3 pos)
         {
+            if (Art.Prop("Environment/TrafficCone_1", g, pos, 0f, 0.8f) != null) return;
             var orange = M("Prop_ConeOrange", new Color(1f, 0.45f, 0.1f));
             Shapes.Make(PrimitiveType.Cube, "ConeBase", g, pos + Vector3.up * 0.04f, new Vector3(0.6f, 0.08f, 0.6f), orange, false);
             LowPoly.Make(LowPoly.Cone(8), "Cone", g, pos + Vector3.up * 0.42f, new Vector3(0.45f, 0.72f, 0.45f), orange);

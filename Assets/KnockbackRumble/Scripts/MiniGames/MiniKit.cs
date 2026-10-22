@@ -92,8 +92,14 @@ namespace KnockbackRumble
             for (int i = 0; i < 2; i++)
             {
                 Vector3 c = new Vector3(-4f + i * 8f, 0f, 2.2f);
-                Block(l, "Couch_Seat", c + Vector3.up * 0.3f, new Vector3(3.4f, 0.6f, 1.4f), couch);
-                Block(l, "Couch_Back", c + new Vector3(0f, 0.9f, 0.6f), new Vector3(3.4f, 1.2f, 0.4f), couch);
+                var seat = Block(l, "Couch_Seat", c + Vector3.up * 0.3f, new Vector3(3.4f, 0.6f, 1.4f), couch);
+                var back = Block(l, "Couch_Back", c + new Vector3(0f, 0.9f, 0.6f), new Vector3(3.4f, 1.2f, 0.4f), couch);
+                // The pack's couch, if we have it (the blocks stay as invisible seats).
+                if (Art.Prop("Environment/Couch", l, c, 180f, 3.4f, Art.Fit.Length) != null)
+                {
+                    seat.GetComponent<Renderer>().enabled = false;
+                    back.GetComponent<Renderer>().enabled = false;
+                }
             }
             Kit.IBeam(l, new Vector3(-5f, -23f, 0f), new Vector3(-5f, -1f, 0f), 1f, Kit.Girder);
             Kit.IBeam(l, new Vector3(5f, -23f, 0f), new Vector3(5f, -1f, 0f), 1f, Kit.Girder);
@@ -118,6 +124,20 @@ namespace KnockbackRumble
             foreach (var c in new[] { new Vector3(-t, -14f, -t), new Vector3(t, -14f, -t), new Vector3(-t, -14f, t), new Vector3(t, -14f, t) })
                 Props.LightTower(g, c, 28f, Vector3.zero);
             Props.Backdrop(g, Vector3.zero, reach + 40f, seed, blimp);
+            // Junkyard and street bits from the pack down in the pit and around the stands.
+            Art.Prop("Environment/WaterTower", g, new Vector3(-reach - 26f, -14f, reach + 20f), 30f, 26f);
+            string[] cars = { "Vehicles/Vehicle_Pickup", "Vehicles/Vehicle_Truck", "Vehicles/Vehicle_Sports_Armored", "Vehicles/Vehicle_Truck_Armored" };
+            for (int i = 0; i < 4; i++)
+            {
+                float a = (i * 90f + 30f + seed % 40) * Mathf.Deg2Rad;
+                Art.Prop(cars[i], g, new Vector3(Mathf.Sin(a) * (reach + 4f), -14f, Mathf.Cos(a) * (reach + 4f)), i * 77f + seed % 90, 4.6f, Art.Fit.Length);
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                var p = new Vector3(i < 2 ? -reach - 5f : reach + 5f, -14f, i % 2 == 0 ? -reach * 0.5f : reach * 0.5f);
+                Art.Prop("Environment/StreetLights", g, p, i < 2 ? 90f : -90f, 9f);
+                Art.Prop(i % 2 == 0 ? "Environment/TrashBag_1" : "Environment/Pallet", g, p + new Vector3(0f, 0f, 2f), i * 50f, 1.2f, Art.Fit.Largest);
+            }
             Sign(g, title, new Vector3(0f, 17f, reach + 14f), 0.6f, Palette.Gold);
             if (!string.IsNullOrEmpty(subtitle)) Sign(g, subtitle, new Vector3(0f, 14.6f, reach + 14f), 0.16f, Color.white);
         }

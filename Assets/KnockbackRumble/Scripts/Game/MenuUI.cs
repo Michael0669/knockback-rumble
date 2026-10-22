@@ -923,30 +923,30 @@ namespace KnockbackRumble
 
         void DrawCharacter(float W, float H, float oy)
         {
-            if (charBlurb == null) charBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 19, wordWrap = true, alignment = TextAnchor.UpperLeft };
+            if (charBlurb == null) charBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 16, wordWrap = true, alignment = TextAnchor.UpperLeft };
             UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.7f));
 
             float cx = W / 2f, pw = 1400f, ph = 880f;
             var panel = new Rect(cx - pw / 2f, oy + (1080f - ph) / 2f, pw, ph);
             UiSkin.Panel(panel);
             UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 26f, 700f, 60f), "PICK YOUR CHARACTER", 52, UiSkin.Gold);
-            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 800f, 30f), "Your vest is always your player color. Drag the preview to spin it.",
+            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 800f, 30f), "Your character wears your player color. Drag the preview to spin it.",
                 UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
 
             int current = Profile.Character;
             var all = Characters.All;
-            float gx = panel.x + 40f, gy = panel.y + 140f, cw = 380f, ch = 150f, gap = 16f;
+            float gx = panel.x + 40f, gy = panel.y + 130f, cw = 252f, ch = 136f, gap = 14f;
             for (int i = 0; i < all.Length; i++)
             {
                 var c = all[i];
-                var r = new Rect(gx + (i % 2) * (cw + gap), gy + (i / 2) * (ch + gap), cw, ch);
+                var r = new Rect(gx + (i % 3) * (cw + gap), gy + (i / 3) * (ch + gap), cw, ch);
                 bool on = c.id == current;
                 UiSkin.Card(r);
                 if (on) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(1f, 0.79f, 0.16f, 0.25f));
-                UiSkin.Heading(new Rect(r.x + 24f, r.y + 14f, r.width - 150f, 44f), c.name.ToUpperInvariant(), 32, on ? UiSkin.Gold : UiSkin.Cream);
+                UiSkin.Text(new Rect(r.x + 18f, r.y + 10f, r.width - 36f, 40f), c.name.ToUpperInvariant(), UiSkin.Display, 24, on ? UiSkin.Gold : UiSkin.Cream,
+                    TextAnchor.MiddleLeft, true);
                 charBlurb.normal.textColor = UiSkin.Muted;
-                GUI.Label(new Rect(r.x + 24f, r.y + 64f, r.width - 48f, r.height - 72f), c.blurb, charBlurb);
-                if (on) UiSkin.Badge(r.xMax - 130f, r.y + 18f, "PICKED", UiSkin.Green);
+                GUI.Label(new Rect(r.x + 18f, r.y + 52f, r.width - 36f, r.height - 58f), c.blurb, charBlurb);
                 if (!on && GUI.Button(r, GUIContent.none, GUIStyle.none))
                 {
                     Profile.Character = c.id;
