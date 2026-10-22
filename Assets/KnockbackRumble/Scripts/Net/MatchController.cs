@@ -252,8 +252,11 @@ namespace KnockbackRumble
                 bool isPlayer = !e.bot && local;
 
                 Vector3 spawn = race.SpawnPointFor(eventCourse, i);
+                // Characters: yours from the CHARACTER screen; each bot always plays the same one; other
+                // players' arrive in a Character message from their machine.
+                int character = isPlayer ? Profile.Character : e.bot ? Characters.ForBot(e.style) : -1;
                 var c = Contestant.Create(e.name, color, isPlayer, persona, spawn, race.SpawnFacing(eventCourse, spawn),
-                    e.netId, e.owner, local, !e.bot);
+                    e.netId, e.owner, local, !e.bot, character);
 
                 if (isPlayer)
                 {
@@ -268,17 +271,14 @@ namespace KnockbackRumble
                 if (local)
                 {
                     c.ApplyLoadout(isPlayer ? Profile.Loadout : Loadouts.RandomForBot(new System.Random(seed + e.netId * 7919)));
-                    // Outfits: yours from the CUSTOMIZE screen; each bot always wears the same thing.
-                    c.Visual.ApplyOutfit(isPlayer ? Profile.Outfit : Cosmetics.RandomOutfit(new System.Random(e.style * 977 + 13)));
+                    // (Outfits are switched off for now: no ApplyOutfit.)
                     if (mini != null) mini.SetupLocal(c); // e.g. no guns, or everyone gets a rocket launcher
                     if (Net.Online)
                     {
                         var w = writer.Begin(MsgType.Loadout).Byte(c.NetId);
                         c.Loadout.Write(w);
                         Net.Session.Send(w);
-                        var wo = writer.Begin(MsgType.Outfit).Byte(c.NetId);
-                        c.Visual.CurrentOutfit.Write(wo);
-                        Net.Session.Send(wo);
+                        Net.Session.Send(writer.Begin(MsgType.Character).Byte(c.NetId).Byte((byte)Mathf.Max(0, c.Visual.Character)));
                     }
                 }
 
@@ -697,6 +697,14 @@ namespace KnockbackRumble
                     var c = Find(r.Byte());
                     var outfit = Outfit.Read(r);
                     if (c != null && !c.IsLocal) c.Visual.ApplyOutfit(outfit);
+                    break;
+                }
+
+                case MsgType.Character:
+                {
+                    var c = Find(r.Byte());
+                    int character = r.Byte();
+                    if (c != null && !c.IsLocal) c.Visual.SetCharacter(character);
                     break;
                 }
 

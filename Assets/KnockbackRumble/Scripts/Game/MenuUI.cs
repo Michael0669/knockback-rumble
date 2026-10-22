@@ -27,13 +27,9 @@ namespace KnockbackRumble
         bool showTools;
         bool showVolumes;   // the VOICE VOLUMES pop-up
         bool showLoadout;   // the LOADOUT screen
-        bool showCustomize; // the CUSTOMIZE screen
+        bool showCharacter; // the CHARACTER screen
         bool showTournament; // the PICK THE GAMES screen
         bool tournamentOffline; // START on that screen plays offline vs bots (else: hosts the lobby's tournament)
-        int customizeSlot;
-        Outfit editingOutfit;
-        string shopMessage;
-        float shopMessageTime = -99f;
         int loadoutSlot;    // which slot the LOADOUT screen is editing
         Loadout editing;
         Screen lastScreen = Screen.Main;
@@ -94,13 +90,13 @@ namespace KnockbackRumble
             }
 
             if (screen == Screen.Connecting) showVolumes = false;
-            if (screen == Screen.Race && !Paused) { showVolumes = false; showLoadout = false; showCustomize = false; }
-            if (screen == Screen.Connecting) { showLoadout = false; showCustomize = false; }
+            if (screen == Screen.Race && !Paused) { showVolumes = false; showLoadout = false; showCharacter = false; }
+            if (screen == Screen.Connecting) { showLoadout = false; showCharacter = false; }
             if (screen == Screen.Race || screen == Screen.Connecting) showTournament = false;
             if (screen == Screen.Lobby && !session.IsHost) showTournament = false;
             if (screen == Screen.Main && !tournamentOffline) showTournament = false;
-            bool popup = showVolumes || showLoadout || showCustomize || showTournament;
-            if (!showCustomize) CustomizePreviewHide();
+            bool popup = showVolumes || showLoadout || showCharacter || showTournament;
+            if (!showCharacter) CustomizePreviewHide();
 
             if (screen == Screen.Race)
             {
@@ -112,7 +108,7 @@ namespace KnockbackRumble
                     GUI.enabled = true;
                     if (showVolumes) DrawVolumes(session, W, H, oy);
                     else if (showLoadout) DrawLoadout(W, H, oy);
-                    else if (showCustomize) DrawCustomize(W, H, oy);
+                    else if (showCharacter) DrawCharacter(W, H, oy);
                 }
                 return;
             }
@@ -141,7 +137,7 @@ namespace KnockbackRumble
                 DrawProfileBar(new Rect(W - 220f - 470f, H - 102f, 470f, 92f));
             if (showVolumes) DrawVolumes(session, W, H, oy);
             else if (showLoadout) DrawLoadout(W, H, oy);
-            else if (showCustomize) DrawCustomize(W, H, oy);
+            else if (showCharacter) DrawCharacter(W, H, oy);
             else if (showTournament) DrawTournament(match, W, H, oy);
         }
 
@@ -200,7 +196,7 @@ namespace KnockbackRumble
             }
 
             // Testing tools (direct connect) tucked away bottom-left.
-            if (!showTools && UiSkin.Button(new Rect(40f, H - 182f, 300f, 82f), "CUSTOMIZE", UiSkin.Yellow, "Hats, shirts, shoes...", 32)) OpenCustomize();
+            if (!showTools && UiSkin.Button(new Rect(40f, H - 182f, 300f, 82f), "CHARACTER", UiSkin.Yellow, "Pick who you play as", 32)) OpenCharacter();
             if (UiSkin.Button(new Rect(40f, H - 86f, 300f, 60f), showTools ? "HIDE TESTING TOOLS" : "TESTING TOOLS", UiSkin.Dark, null, 24))
                 showTools = !showTools;
             if (showTools) DrawTools(session, H);
@@ -378,7 +374,7 @@ namespace KnockbackRumble
             DrawMicBar(new Rect(cx - 740f, oy + 884f, 620f, 56f), voice);
             if (UiSkin.Button(new Rect(cx - 100f, oy + 880f, 240f, 62f), "VOLUMES", UiSkin.Dark, null, 26)) showVolumes = true;
             if (UiSkin.Button(new Rect(cx + 160f, oy + 880f, 280f, 62f), "LOADOUT", UiSkin.Teal, null, 26)) OpenLoadout();
-            if (UiSkin.Button(new Rect(cx + 460f, oy + 880f, 280f, 62f), "CUSTOMIZE", UiSkin.Yellow, null, 26)) OpenCustomize();
+            if (UiSkin.Button(new Rect(cx + 460f, oy + 880f, 280f, 62f), "CHARACTER", UiSkin.Yellow, null, 26)) OpenCharacter();
         }
 
         void DrawPlayerCard(Rect r, NetPeer p, NetSession session, NetVoice voice)
@@ -467,7 +463,7 @@ namespace KnockbackRumble
 
             float halfW = (pw - 80f - 16f) / 2f;
             if (UiSkin.Button(new Rect(px + 40f, y, halfW, 76f), "LOADOUT", UiSkin.Teal, null, 30)) OpenLoadout();
-            if (UiSkin.Button(new Rect(px + 56f + halfW, y, halfW, 76f), "CUSTOMIZE", UiSkin.Yellow, null, 30)) OpenCustomize();
+            if (UiSkin.Button(new Rect(px + 56f + halfW, y, halfW, 76f), "CHARACTER", UiSkin.Yellow, null, 30)) OpenCharacter();
             y += 88f;
 
             if (online && host)
@@ -786,7 +782,7 @@ namespace KnockbackRumble
             tournamentOffline = offline;
             showTournament = true;
             showLoadout = false;
-            showCustomize = false;
+            showCharacter = false;
             showVolumes = false;
             GUI.FocusControl(null);
         }
@@ -901,13 +897,14 @@ namespace KnockbackRumble
         }
 
         // =====================================================================
-        // Customize (outfits)
+        // Character select
         // =====================================================================
 
-        void OpenCustomize()
+        GUIStyle charBlurb;
+
+        void OpenCharacter()
         {
-            editingOutfit = Profile.Outfit;
-            showCustomize = true;
+            showCharacter = true;
             showLoadout = false;
             showVolumes = false;
             GUI.FocusControl(null);
@@ -924,101 +921,57 @@ namespace KnockbackRumble
             return MatchController.HumanColors[0];
         }
 
-        void ShopMessage(string text)
+        void DrawCharacter(float W, float H, float oy)
         {
-            shopMessage = text;
-            shopMessageTime = Now;
-        }
-
-        void DrawCustomize(float W, float H, float oy)
-        {
-            if (editingOutfit == null) editingOutfit = Profile.Outfit;
+            if (charBlurb == null) charBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 19, wordWrap = true, alignment = TextAnchor.UpperLeft };
             UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.7f));
 
-            float cx = W / 2f, pw = 1500f, ph = 900f;
+            float cx = W / 2f, pw = 1400f, ph = 880f;
             var panel = new Rect(cx - pw / 2f, oy + (1080f - ph) / 2f, pw, ph);
             UiSkin.Panel(panel);
-            UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 26f, 500f, 60f), "CUSTOMIZE", 52, UiSkin.Gold);
-            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 800f, 30f), "Spend your show winnings on looking ridiculous. Drag the dummy to spin it.",
+            UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 26f, 700f, 60f), "PICK YOUR CHARACTER", 52, UiSkin.Gold);
+            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 800f, 30f), "Your vest is always your player color. Drag the preview to spin it.",
                 UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
-            DrawProfileBar(new Rect(panel.xMax - 520f, panel.y + 26f, 480f, 92f));
 
-            // Slots
-            float sx = panel.x + 40f, sy = panel.y + 140f, sw = 230f, sh = 96f;
-            for (int i = 0; i < Outfit.SlotCount; i++)
+            int current = Profile.Character;
+            var all = Characters.All;
+            float gx = panel.x + 40f, gy = panel.y + 140f, cw = 380f, ch = 150f, gap = 16f;
+            for (int i = 0; i < all.Length; i++)
             {
-                var r = new Rect(sx, sy + i * (sh + 12f), sw, sh);
-                bool sel = i == customizeSlot;
-                if (UiSkin.Button(r, "", sel ? UiSkin.Yellow : UiSkin.Dark, null, 10)) customizeSlot = i;
-                Color ink = sel ? UiSkin.Ink : UiSkin.Cream;
-                UiSkin.Text(new Rect(r.x + 22f, r.y + 10f, r.width - 30f, 30f), Cosmetics.SlotNames[i], UiSkin.BodyBold, 19,
-                    new Color(ink.r, ink.g, ink.b, 0.75f), TextAnchor.MiddleLeft, false);
-                var eq = Cosmetics.Find((CosmeticSlot)i, editingOutfit.ids[i]);
-                UiSkin.Text(new Rect(r.x + 22f, r.y + 38f, r.width - 30f, 44f), eq != null ? eq.name.ToUpperInvariant() : "NOTHING", UiSkin.Display, 24,
-                    ink, TextAnchor.MiddleLeft, !sel);
+                var c = all[i];
+                var r = new Rect(gx + (i % 2) * (cw + gap), gy + (i / 2) * (ch + gap), cw, ch);
+                bool on = c.id == current;
+                UiSkin.Card(r);
+                if (on) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(1f, 0.79f, 0.16f, 0.25f));
+                UiSkin.Heading(new Rect(r.x + 24f, r.y + 14f, r.width - 150f, 44f), c.name.ToUpperInvariant(), 32, on ? UiSkin.Gold : UiSkin.Cream);
+                charBlurb.normal.textColor = UiSkin.Muted;
+                GUI.Label(new Rect(r.x + 24f, r.y + 64f, r.width - 48f, r.height - 72f), c.blurb, charBlurb);
+                if (on) UiSkin.Badge(r.xMax - 130f, r.y + 18f, "PICKED", UiSkin.Green);
+                if (!on && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                {
+                    Profile.Character = c.id;
+                    Sfx.Ui("ui_equip");
+                }
             }
 
             // Live preview
-            var pr = new Rect(panel.x + 300f, panel.y + 140f, 450f, 600f);
+            var pr = new Rect(panel.x + 860f, panel.y + 120f, 480f, 640f);
             UiSkin.Card(pr);
             var preview = CustomizePreview.Get();
-            preview.Show(editingOutfit, MyColor());
+            preview.ShowCharacter(current, MyColor());
             if (preview.Texture != null && Event.current.type == EventType.Repaint)
                 GUI.DrawTexture(new Rect(pr.x + 10f, pr.y + 10f, pr.width - 20f, pr.height - 20f), preview.Texture, ScaleMode.ScaleAndCrop, false);
             var ev = Event.current;
             if (ev.type == EventType.MouseDrag && pr.Contains(ev.mousePosition)) { preview.Spin(ev.delta.x * 1.5f); ev.Use(); }
+            var picked = Characters.Get(current);
+            UiSkin.Heading(new Rect(pr.x, pr.yMax - 70f, pr.width, 50f), picked != null ? picked.name.ToUpperInvariant() : "", 40, UiSkin.Gold, TextAnchor.MiddleCenter);
 
-            // Items for the selected slot (the first card is "nothing")
-            var slot = (CosmeticSlot)customizeSlot;
-            var items = Cosmetics.ForSlot(slot);
-            float ix = panel.x + 780f, iy = panel.y + 140f, cw = 330f, chh = 104f, gap = 14f;
-            for (int i = 0; i <= items.Count; i++)
-            {
-                var item = i == 0 ? null : items[i - 1];
-                var r = new Rect(ix + (i % 2) * (cw + gap), iy + (i / 2) * (chh + gap), cw, chh);
-                byte id = item != null ? item.id : (byte)0;
-                bool equipped = editingOutfit.ids[customizeSlot] == id;
-                bool owned = Profile.Owns(item);
-                bool canAfford = item == null || Profile.Wallet >= item.price;
-
-                UiSkin.Card(r);
-                if (equipped) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(1f, 0.79f, 0.16f, 0.22f));
-                UiSkin.Image(new Rect(r.x + 18f, r.y + (r.height - 44f) / 2f, 44f, 44f), UiSkin.Dot, item != null ? item.color : UiSkin.Muted);
-                UiSkin.Heading(new Rect(r.x + 76f, r.y + 12f, r.width - 90f, 40f), item != null ? item.name.ToUpperInvariant() : "NOTHING", 26, UiSkin.Cream);
-                string status = equipped ? "WEARING" : owned ? (item == null || item.price == 0 ? "FREE" : "OWNED") : HUD.Money(item.price);
-                Color sc = equipped ? UiSkin.Green : owned ? UiSkin.LabelBlue : canAfford ? UiSkin.Gold : UiSkin.Red;
-                UiSkin.Text(new Rect(r.x + 76f, r.y + 54f, r.width - 90f, 36f), status, UiSkin.Display, 24, sc, TextAnchor.MiddleLeft, true);
-                if (!owned)
-                    UiSkin.Text(new Rect(r.x + 76f, r.y + 54f, r.width - 96f, 36f), canAfford ? "CLICK TO BUY" : "NOT ENOUGH CASH",
-                        UiSkin.BodyBold, 16, canAfford ? UiSkin.Cream : UiSkin.Muted, TextAnchor.MiddleRight, false);
-
-                if (equipped || !GUI.Button(r, GUIContent.none, GUIStyle.none)) continue;
-                if (!owned)
-                {
-                    if (!Profile.Buy(item))
-                    {
-                        Sfx.Ui("cash_lose");
-                        ShopMessage("You need " + HUD.Money(item.price - Profile.Wallet) + " more. Go win some shows!");
-                        continue;
-                    }
-                    Sfx.Ui("cash");
-                    ShopMessage("Bought the " + item.name + "!");
-                }
-                else Sfx.Ui("ui_equip");
-                editingOutfit.ids[customizeSlot] = id;
-                Profile.SetOutfit(editingOutfit);
-            }
-
-            if (shopMessage != null && Now - shopMessageTime < 2.5f)
-                UiSkin.Heading(new Rect(panel.x + 300f, panel.yMax - 120f, 450f, 40f), shopMessage, 22, UiSkin.Gold, TextAnchor.MiddleCenter);
-            UiSkin.Text(new Rect(panel.x + 300f, panel.yMax - 84f, 450f, 30f),
-                MatchController.Instance != null && MatchController.Instance.InMatch ? "Shows up on your dummy at the next event." : "Everyone sees your outfit online.",
-                UiSkin.BodyBold, 18, UiSkin.Muted, TextAnchor.MiddleCenter, false);
-
+            UiSkin.Text(new Rect(panel.x + 40f, panel.yMax - 84f, 760f, 30f),
+                MatchController.Instance != null && MatchController.Instance.InMatch ? "You switch at the start of the next game." : "Everyone sees your character online.",
+                UiSkin.BodyBold, 18, UiSkin.Muted, TextAnchor.MiddleLeft, false);
             if (UiSkin.Button(new Rect(panel.xMax - 340f, panel.yMax - 112f, 300f, 80f), "DONE", UiSkin.Yellow, null, 36))
             {
-                Profile.SetOutfit(editingOutfit);
-                showCustomize = false;
+                showCharacter = false;
                 CustomizePreviewHide();
             }
         }

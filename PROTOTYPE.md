@@ -94,16 +94,14 @@ Knock-offs (+$100) and falls (-$50) count in every game.
 **Adding a game:** copy one of the files in `Scripts/MiniGames/`, give it a new `EventKind` (in `CourseInfo.cs`),
 add it to the list at the top of `MiniGames` (in `MiniGame.cs`) and to `Events.All`.
 
-## Customize (outfits)
+## Characters
 
-Everyone plays a chunky low-poly soldier: faceted camo pants, a plate-carrier vest in their player color, and a random
-haircut, beard and skin tone (seeded from the color, so all PCs see the same guy).
+**CHARACTER** (main menu, lobby, pause menu) picks who you play as: Sarge, Rookie, Mohawk, Beardo, Doc or Gramps.
+Your vest is always your player color. Everyone sees your pick online, and each bot always plays the same one.
+The list lives in `Scripts/Cosmetics/Characters.cs`. For now they're variations of the built-in low-poly soldier;
+real character models can replace them later.
 
-**CUSTOMIZE** (main menu, lobby, pause menu) dresses your dummy: hat, mask, shirt, pants, shoes, gloves.
-Equipping an item hides the base part it covers (hat hides hair, shirt hides the vest, and so on).
-One item per slot is free; the rest cost wallet cash (what you keep from shows). Everyone sees your outfit
-online, and bots wear random outfits. Items live in `Scripts/Cosmetics/Cosmetics.cs`: each one is a line in the
-list plus a small build function.
+The old outfit shop (hats, shirts...) is switched off. Its code is still in `Scripts/Cosmetics/Cosmetics.cs`.
 
 ## Loadouts
 
