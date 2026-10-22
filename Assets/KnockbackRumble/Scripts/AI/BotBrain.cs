@@ -20,13 +20,17 @@ namespace KnockbackRumble
         float fireTimer, shoveTimer, stuckTimer, retargetTimer, gadgetTimer, streakTimer, wanderTimer;
         Vector3 lastPos, wanderPoint;
         DentBody target;
+        MiniGame mini;
+        bool raceLike;
 
-        bool Arena => course != null && course.kind != EventKind.Gauntlet;
+        bool Arena => course != null && !raceLike;
 
         public void Init(Contestant contestant, CourseInfo courseInfo, float skillLevel)
         {
             me = contestant;
             course = courseInfo;
+            mini = courseInfo != null ? MiniGames.Get(courseInfo.kind) : null;
+            raceLike = courseInfo != null && RaceManager.IsRaceKind(courseInfo.kind);
             skill = Mathf.Clamp01(skillLevel);
             lateral = Random.Range(-1.5f, 1.5f);
             fireTimer = Random.Range(1f, 2.5f);
@@ -73,10 +77,21 @@ namespace KnockbackRumble
                 return;
             }
 
+            // Mini-games can tell bots to freeze (red light!).
+            if (mini != null && !motor.InputLocked && mini.BotHold(me, skill))
+            {
+                motor.MoveInput = Vector3.zero;
+                motor.FacingInput = Vector3.zero;
+                if (motor.Stunned && Random.value < dt * 6f * skill) motor.QueueJump();
+                lastPos = pos;
+                stuckTimer = 0f;
+                return;
+            }
+
             Vector3 steerPoint = Arena ? ArenaGoal(pos, dt) : GauntletGoal(pos);
 
             // Out of ammo? Detour to a nearby crate.
-            if (me.Weapons.Ammo == 0)
+            if (me.Weapons.Held != null && me.Weapons.Ammo == 0)
             {
                 float reach = Arena ? 22f : 9f;
                 foreach (var p in WeaponPickup.All)
@@ -118,6 +133,7 @@ namespace KnockbackRumble
                 motor.QueueJump(); // mash to recover
             }
             motor.MoveInput = dir * speed;
+            if (mini != null && !motor.InputLocked) mini.BotExtra(me, skill, dt);
 
             // Unstick
             if (speed > 0f && Shapes.Flat(pos - lastPos).magnitude < 0.5f) stuckTimer += dt;
@@ -175,6 +191,11 @@ namespace KnockbackRumble
         Vector3 ArenaGoal(Vector3 pos, float dt)
         {
             var show = ShowManager.Instance;
+            if (mini != null)
+            {
+                var goal = mini.BotGoal(me, pos, skill);
+                if (goal.HasValue) return goal.Value;
+            }
 
             if (course.kind == EventKind.CashGrab && show != null)
             {

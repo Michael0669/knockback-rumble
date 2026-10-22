@@ -95,15 +95,8 @@ namespace KnockbackRumble
             course = courseInfo;
             cam = camera;
 
-            // Number the crates by position so every machine agrees which is which.
-            crates.Clear();
-            crates.AddRange(WeaponPickup.All);
-            crates.Sort((a, b) =>
-            {
-                int z = a.transform.position.z.CompareTo(b.transform.position.z);
-                return z != 0 ? z : a.transform.position.x.CompareTo(b.transform.position.x);
-            });
-            for (int i = 0; i < crates.Count; i++) crates[i].Index = i;
+            MiniGames.ShowArena(null);
+            IndexCrates();
 
             var s = NetSession.Ensure();
             if (!hooked)
@@ -118,6 +111,19 @@ namespace KnockbackRumble
         }
 
         public Contestant Find(byte netId) => byId.TryGetValue(netId, out var c) ? c : null;
+
+        /// <summary>Number the crates in the visible arena by position, so every machine agrees which is which.</summary>
+        void IndexCrates()
+        {
+            crates.Clear();
+            crates.AddRange(WeaponPickup.All);
+            crates.Sort((a, b) =>
+            {
+                int z = a.transform.position.z.CompareTo(b.transform.position.z);
+                return z != 0 ? z : a.transform.position.x.CompareTo(b.transform.position.x);
+            });
+            for (int i = 0; i < crates.Count; i++) crates[i].Index = i;
+        }
 
         public Contestant HumanFor(ulong peer)
         {
@@ -143,6 +149,7 @@ namespace KnockbackRumble
             showRoster.Clear();
             showRoster.Add(new RosterEntry { netId = 0, owner = Net.LocalId, bot = false, style = 0, name = OfflineName });
             AddBots(showRoster, OfflineBots);
+            show.SetPlaylist(Tournament.BuildPlaylist(new System.Random()));
             StartRound(0);
         }
 
@@ -156,6 +163,7 @@ namespace KnockbackRumble
             foreach (var p in s.Peers)
                 showRoster.Add(new RosterEntry { netId = (byte)showRoster.Count, owner = p.Id, bot = false, style = p.Color, name = p.Name });
             if (FillWithBots) AddBots(showRoster, RaceSize - showRoster.Count);
+            show.SetPlaylist(Tournament.BuildPlaylist(new System.Random()));
             StartRound(0);
         }
 
@@ -168,7 +176,7 @@ namespace KnockbackRumble
 
         void StartRound(int round)
         {
-            var kind = ShowManager.KindFor(round);
+            var kind = show.KindAt(round);
             int seed = Random.Range(1, int.MaxValue);
             // Loading screen (rules + controls), then the countdown, then GO.
             float start = Net.Time + ShowManager.LoadingTimeFor(round) + race.countdownTime;
@@ -177,6 +185,8 @@ namespace KnockbackRumble
                 var w = writer.Begin(MsgType.StartRace).Float(start).Byte((byte)kind).Byte((byte)round).Int(seed)
                     .Byte((byte)showRoster.Count);
                 foreach (var e in showRoster) w.Byte(e.netId).ULong(e.owner).Bool(e.bot).Byte(e.style).Str(e.name);
+                w.Byte((byte)show.Playlist.Count);
+                foreach (var k in show.Playlist) w.Byte((byte)k);
                 Net.Session.Send(w);
             }
             BeginRace(showRoster, start, kind, round, seed);
@@ -222,11 +232,15 @@ namespace KnockbackRumble
         {
             ClearContestants();
             Gadgets.ClearAll();
-            foreach (var p in crates) if (p != null) p.ResetCrate();
 
-            var eventCourse = CourseInfo.Find(kind);
+            // The event's arena (mini-game arenas are built the first time they're played), and only that one shown.
+            var eventCourse = MiniGames.EnsureArena(kind);
             if (eventCourse == null) { eventCourse = course; kind = EventKind.Gauntlet; }
+            MiniGames.ShowArena(kind);
+            IndexCrates();
+            foreach (var p in crates) if (p != null) p.ResetCrate();
             show.BeginRound(kind, round, eventCourse, seed);
+            var mini = MiniGames.Get(kind);
 
             var list = new List<Contestant>();
             for (int i = 0; i < roster.Count; i++)
@@ -256,6 +270,7 @@ namespace KnockbackRumble
                     c.ApplyLoadout(isPlayer ? Profile.Loadout : Loadouts.RandomForBot(new System.Random(seed + e.netId * 7919)));
                     // Outfits: yours from the CUSTOMIZE screen; each bot always wears the same thing.
                     c.Visual.ApplyOutfit(isPlayer ? Profile.Outfit : Cosmetics.RandomOutfit(new System.Random(e.style * 977 + 13)));
+                    if (mini != null) mini.SetupLocal(c); // e.g. no guns, or everyone gets a rocket launcher
                     if (Net.Online)
                     {
                         var w = writer.Begin(MsgType.Loadout).Byte(c.NetId);
@@ -286,6 +301,8 @@ namespace KnockbackRumble
             show.Clear();
             Gadgets.ClearAll();
             showRoster.Clear();
+            MiniGames.ShowArena(null);
+            IndexCrates();
             foreach (var p in crates) if (p != null) p.ResetCrate();
             ShowMenuCamera();
             MenuUI.SetPaused(false);
@@ -493,6 +510,10 @@ namespace KnockbackRumble
                     showRoster.Clear();
                     for (int i = 0; i < n; i++)
                         showRoster.Add(new RosterEntry { netId = r.Byte(), owner = r.ULong(), bot = r.Bool(), style = r.Byte(), name = r.Str() });
+                    int games = r.Byte();
+                    var playlist = new List<EventKind>(games);
+                    for (int i = 0; i < games; i++) playlist.Add((EventKind)r.Byte());
+                    show.SetPlaylist(playlist);
                     if (round == 0) MenuUI.SetPaused(false);
                     BeginRace(showRoster, start, kind, round, seed);
                     break;
@@ -690,6 +711,10 @@ namespace KnockbackRumble
 
                 case MsgType.CashDelta:
                     if (!Net.IsHost) show.OnCashDelta(r);
+                    break;
+
+                case MsgType.Mini:
+                    if (!Net.IsHost) MiniGames.OnMessage(r);
                     break;
 
                 case MsgType.BagReq:

@@ -44,6 +44,21 @@ namespace KnockbackRumble
         public int FinishTarget { get; private set; }
         public CourseInfo Course { get; private set; }
         public Contestant Player { get; private set; }
+        /// <summary>The mini-game being played (null for the classic events).</summary>
+        public MiniGame Mini => MiniGames.Current;
+        /// <summary>Race to a finish line (the Gauntlet and race mini-games).</summary>
+        public bool IsRace => IsRaceKind(Kind);
+        /// <summary>Falling off knocks you out (Crumble Plaza and some mini-games).</summary>
+        public bool FallsEliminate => Kind == EventKind.Crumble || (Mini != null && Mini.FallsEliminate);
+        /// <summary>People can get knocked out of this event (survivor bonuses at the end).</summary>
+        public bool HasEliminations => Kind == EventKind.Crumble || (Mini != null && Mini.HasEliminations);
+
+        public static bool IsRaceKind(EventKind k)
+        {
+            if (k == EventKind.Gauntlet) return true;
+            var g = MiniGames.Get(k);
+            return g != null && g.IsRace;
+        }
         public float ResultsTime { get; private set; }
         public readonly List<Contestant> Contestants = new List<Contestant>();
         public readonly List<Contestant> Finishers = new List<Contestant>();
@@ -99,6 +114,7 @@ namespace KnockbackRumble
                 crumble = course.GetComponentInChildren<CrumbleFloor>(true);
                 if (crumble != null) crumble.Begin(seed, raceStart, TimeLimit);
             }
+            MiniGames.Begin(kind, course, seed, raceStart);
             Announcer.Intro(kind);
         }
 
@@ -106,6 +122,7 @@ namespace KnockbackRumble
         public void Clear()
         {
             StopCrumble();
+            MiniGames.EndCurrent();
             Contestants.Clear();
             Finishers.Clear();
             Results.Clear();
@@ -132,7 +149,7 @@ namespace KnockbackRumble
         /// <summary>Everyone starts facing the right way: down the course, or toward the middle of an arena.</summary>
         public Quaternion SpawnFacing(CourseInfo course, Vector3 at)
         {
-            if (course == null || course.kind == EventKind.Gauntlet) return Quaternion.identity;
+            if (course == null || IsRaceKind(course.kind)) return Quaternion.identity;
             Vector3 to = Shapes.Flat(course.center - at);
             return to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : Quaternion.identity;
         }
@@ -146,6 +163,7 @@ namespace KnockbackRumble
 
         void Update()
         {
+            if (State != Phase.Idle && Mini != null) Mini.Tick();
             switch (State)
             {
                 case Phase.Countdown:
@@ -167,7 +185,8 @@ namespace KnockbackRumble
                 case Phase.Racing:
                     Clock = Net.Time - RaceStartTime;
                     CheckLocalFalls();
-                    if (Net.IsHost && ShouldEnd()) HostEndRace();
+                    if (Net.IsHost && Mini != null) Mini.HostFrame(this);
+                    if (Net.IsHost && State == Phase.Racing && ShouldEnd()) HostEndRace();
                     break;
 
                 case Phase.Results:
@@ -180,15 +199,11 @@ namespace KnockbackRumble
         bool ShouldEnd()
         {
             if (Clock >= TimeLimit) return true;
-            switch (Kind)
-            {
-                case EventKind.Gauntlet:
-                    return Finishers.Count >= FinishTarget;
-                case EventKind.Crumble:
-                    return Contestants.Count >= 2 ? AliveCount <= 1 : AliveCount == 0;
-                default:
-                    return false;
-            }
+            if (IsRace) return Finishers.Count >= FinishTarget;
+            if (Mini != null && Mini.ShouldEnd(this)) return true;
+            if (HasEliminations && (Mini == null || Mini.EndWhenOneLeft))
+                return Contestants.Count >= 2 ? AliveCount <= 1 : AliveCount == 0;
+            return false;
         }
 
         // ---------- Falls ----------
@@ -196,10 +211,11 @@ namespace KnockbackRumble
         void CheckLocalFalls()
         {
             if (Course == null) return;
+            float killY = Mini != null ? Mini.KillY : Course.killY;
             for (int i = 0; i < Contestants.Count; i++)
             {
                 var c = Contestants[i];
-                if (c != null && c.IsLocal && c.transform.position.y < Course.killY) LocalFell(c);
+                if (c != null && c.IsLocal && c.transform.position.y < killY) LocalFell(c);
             }
         }
 
@@ -228,7 +244,7 @@ namespace KnockbackRumble
             var attacker = credited ? dent.LastAttacker.GetComponent<Contestant>() : null;
             bool selfOwn = !credited && Time.time - dent.LastSelfHitTime < knockoffCreditTime;
 
-            bool eliminate = Kind == EventKind.Crumble && State == Phase.Racing;
+            bool eliminate = FallsEliminate && State == Phase.Racing;
             Vector3 p = eliminate ? LoungePoint() : RespawnFor(c);
             c.Motor.Teleport(p, eliminate ? Quaternion.Euler(0f, 180f, 0f) : SpawnFacing(Course, p));
             c.Dent.ResetDent();
@@ -244,7 +260,7 @@ namespace KnockbackRumble
         /// </summary>
         Vector3 RespawnFor(Contestant c)
         {
-            if (Kind == EventKind.Gauntlet || Course == null || Course.spawnPoints == null || Course.spawnPoints.Length == 0)
+            if (IsRace || Course == null || Course.spawnPoints == null || Course.spawnPoints.Length == 0)
             {
                 if (c.CheckpointIndex < 0) return c.RespawnPoint + Vector3.up * 0.5f; // back to their own start spot
                 // 2 rows of 4 around the checkpoint gate; start at this dummy's own slot, skip taken ones.
@@ -297,7 +313,7 @@ namespace KnockbackRumble
             if (State == Phase.Racing)
             {
                 // Payout Streaks are counted by whoever owns the attacker.
-                if (knockoff && attacker.IsLocal)
+                if (knockoff && attacker.IsLocal && (Mini == null || Mini.StreaksAllowed))
                 {
                     var earned = attacker.AddStreakKnockoff();
                     if (earned != Streak.None && attacker.IsPlayer)
@@ -308,17 +324,7 @@ namespace KnockbackRumble
                     }
                 }
 
-                if (Kind == EventKind.Crumble && !victim.Eliminated)
-                {
-                    victim.Eliminated = true;
-                    Eliminations.Add(victim);
-                    if (victim.IsLocal) victim.Weapons.Disabled = true;
-                    if (victim.IsPlayer)
-                    {
-                        Announcer.ShowToast("ELIMINATED!  Welcome to the Losers' Lounge");
-                        Sfx.Ui("sad_trombone", 1f, 0f, 0.4f);
-                    }
-                }
+                if (FallsEliminate && !victim.Eliminated) MarkEliminated(victim);
 
                 if (Net.IsHost && ShowManager.Instance != null) ShowManager.Instance.HostOnFell(victim, knockoff ? attacker : null);
             }
@@ -329,6 +335,32 @@ namespace KnockbackRumble
                 Announcer.Fell(victim.IsPlayer, attacker != null && attacker.IsPlayer, attacker != null, selfOwn);
 
             if (victim.Persona != null) victim.Bark(VoiceLine.Pick(victim.Persona.Fell));
+        }
+
+        /// <summary>Knocked out of the event: flagged, listed, and (if it's yours) sent to the Losers' Lounge. Every machine.</summary>
+        public void Eliminate(Contestant c)
+        {
+            if (c == null || c.Eliminated) return;
+            if (c.IsLocal)
+            {
+                c.Motor.Teleport(LoungePoint(), Quaternion.Euler(0f, 180f, 0f));
+                c.Dent.ResetDent();
+                var bot = c.GetComponent<BotBrain>();
+                if (bot != null) bot.ResetPath();
+            }
+            MarkEliminated(c);
+        }
+
+        void MarkEliminated(Contestant c)
+        {
+            c.Eliminated = true;
+            Eliminations.Add(c);
+            if (c.IsLocal) c.Weapons.Disabled = true;
+            if (c.IsPlayer)
+            {
+                Announcer.ShowToast("ELIMINATED!  Welcome to the Losers' Lounge");
+                Sfx.Ui("sad_trombone", 1f, 0f, 0.4f);
+            }
         }
 
         // ---------- Launches ----------
@@ -391,7 +423,7 @@ namespace KnockbackRumble
 
         public void ReachCheckpoint(Contestant c, Checkpoint cp)
         {
-            if (Kind != EventKind.Gauntlet || !c.IsLocal || cp.index <= c.CheckpointIndex) return;
+            if (!IsRace || !c.IsLocal || cp.index <= c.CheckpointIndex) return;
             c.CheckpointIndex = cp.index;
             c.RespawnPoint = cp.transform.position;
             if (c.IsPlayer)
@@ -403,7 +435,7 @@ namespace KnockbackRumble
 
         public void ReachFinish(Contestant c)
         {
-            if (Kind != EventKind.Gauntlet || !c.IsLocal || State != Phase.Racing || c.Finished || c.FinishRequested) return;
+            if (!IsRace || !c.IsLocal || State != Phase.Racing || c.Finished || c.FinishRequested) return;
             c.FinishRequested = true;
             if (MatchController.Instance != null) MatchController.Instance.ReportFinish(c);
             else HostRegisterFinish(c);

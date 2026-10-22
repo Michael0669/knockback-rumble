@@ -21,6 +21,9 @@ namespace KnockbackRumble
 
         readonly List<Delayed> delayed = new List<Delayed>();
 
+        /// <summary>Cut the in-game music (Porta-Potty Panic: the music stops, everybody runs).</summary>
+        public static bool MuteGameMusic { get; set; }
+
         void Awake()
         {
             for (int i = 0; i < Pool3D; i++)
@@ -120,12 +123,13 @@ namespace KnockbackRumble
             }
 
             // Crossfade; duck while paused.
-            float target = Sfx.MusicVolume * (MenuUI.Paused ? 0.45f : 1f) * 0.5f;
+            bool muted = MuteGameMusic && want == "music_game";
+            float target = muted ? 0f : Sfx.MusicVolume * (MenuUI.Paused ? 0.45f : 1f) * 0.5f;
             for (int i = 0; i < 2; i++)
             {
                 var s = music[i];
                 float goal = i == activeMusic ? target : 0f;
-                s.volume = Mathf.MoveTowards(s.volume, goal, Time.unscaledDeltaTime * 0.4f); // ~1.5 s crossfade
+                s.volume = Mathf.MoveTowards(s.volume, goal, Time.unscaledDeltaTime * (muted ? 4f : 0.4f)); // ~1.5 s crossfade (instant cut when muted)
                 if (i != activeMusic && s.volume <= 0.001f && s.isPlaying) s.Stop();
             }
         }

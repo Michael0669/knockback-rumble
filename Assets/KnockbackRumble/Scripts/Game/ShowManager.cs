@@ -23,10 +23,13 @@ namespace KnockbackRumble
     {
         public static ShowManager Instance { get; private set; }
 
-        /// <summary>The events in a show, in order.</summary>
-        public static readonly EventKind[] Lineup = { EventKind.Gauntlet, EventKind.CashGrab, EventKind.Crumble };
+        /// <summary>The original three-event show.</summary>
+        public static readonly EventKind[] ClassicLineup = { EventKind.Gauntlet, EventKind.CashGrab, EventKind.Crumble };
 
-        public enum Reason : byte { Knockoff, Fall, PainPay, Finish, Bag, Standing, Survivor }
+        /// <summary>The games in this tournament, in order (the host picks them; see Tournament).</summary>
+        public readonly List<EventKind> Playlist = new List<EventKind>(ClassicLineup);
+
+        public enum Reason : byte { Knockoff, Fall, PainPay, Finish, Bag, Standing, Survivor, Prize }
 
         // ---- Balance ----
         public const int KnockoffCash = 100;
@@ -46,7 +49,7 @@ namespace KnockbackRumble
         const float RegrabDelay = 1.5f;
 
         public int RoundIndex { get; private set; }
-        public int RoundCount => Lineup.Length;
+        public int RoundCount => Playlist.Count;
         public EventKind Kind { get; private set; }
         public bool IsLastRound => RoundIndex >= RoundCount - 1;
         /// <summary>The last event's results are up: the show is over.</summary>
@@ -89,7 +92,15 @@ namespace KnockbackRumble
         void Awake() => Instance = this;
         void OnDestroy() { if (Instance == this) Instance = null; }
 
-        public static EventKind KindFor(int round) => Lineup[Mathf.Clamp(round, 0, Lineup.Length - 1)];
+        public EventKind KindAt(int round) => Playlist.Count == 0 ? EventKind.Gauntlet : Playlist[Mathf.Clamp(round, 0, Playlist.Count - 1)];
+
+        /// <summary>Set the games for the next tournament (every machine, before round 0).</summary>
+        public void SetPlaylist(IList<EventKind> kinds)
+        {
+            Playlist.Clear();
+            if (kinds != null) Playlist.AddRange(kinds);
+            if (Playlist.Count == 0) Playlist.AddRange(ClassicLineup);
+        }
 
         public static string ReasonLabel(Reason r)
         {
@@ -101,6 +112,7 @@ namespace KnockbackRumble
                 case Reason.Finish: return "FINISH PAYOUT";
                 case Reason.Bag: return "BAG MONEY";
                 case Reason.Standing: return "STILL STANDING";
+                case Reason.Prize: return MiniGames.Current != null ? MiniGames.Current.PrizeLabel : "PRIZE";
                 default: return "SURVIVOR BONUS";
             }
         }
@@ -220,7 +232,7 @@ namespace KnockbackRumble
             {
                 AddPopup(applied, reason);
                 if (reason == Reason.Fall) Sfx.Ui("cash_lose");
-                else if (reason == Reason.Bag || reason == Reason.Standing) Sfx.Ui("coin", 1f, 0.05f);
+                else if (reason == Reason.Bag || reason == Reason.Standing || reason == Reason.Prize) Sfx.Ui("coin", 1f, 0.05f);
                 else if (reason != Reason.PainPay) Sfx.Ui("cash");
             }
             return applied;
@@ -232,7 +244,7 @@ namespace KnockbackRumble
             if (Popups.Count > 0)
             {
                 var last = Popups[Popups.Count - 1];
-                bool steady = reason == Reason.Bag || reason == Reason.Standing || reason == Reason.PainPay;
+                bool steady = reason == Reason.Bag || reason == Reason.Standing || reason == Reason.PainPay || reason == Reason.Prize;
                 if (steady && last.reason == reason && Time.time - last.time < 1.6f)
                 {
                     last.amount += amount;
@@ -283,9 +295,11 @@ namespace KnockbackRumble
         {
             if (attacker != null && attacker != victim) HostAward(attacker, KnockoffCash, Reason.Knockoff);
             bool deep = victim.Loadout != null && victim.Loadout.Has(Perk.DeepPockets);
-            HostAward(victim, -(deep ? FallPenalty / 2 : FallPenalty), Reason.Fall);
+            var mini = MiniGames.Current;
+            if (mini == null || mini.FallPenalty) HostAward(victim, -(deep ? FallPenalty / 2 : FallPenalty), Reason.Fall);
             var bag = BagOf(victim);
             if (bag != null) HostDropBag(bag, null, true);
+            if (mini != null) mini.HostOnFell(victim, attacker != victim ? attacker : null);
         }
 
         public void HostOnLaunched(Contestant victim, Contestant attacker, float knock, bool hazard)
@@ -294,6 +308,7 @@ namespace KnockbackRumble
                 HostAward(victim, Mathf.Clamp(Mathf.RoundToInt(knock * 0.5f), 1, PainPayMax), Reason.PainPay);
             var bag = BagOf(victim);
             if (bag != null && knock >= BagDropKnock) HostDropBag(bag, victim, false);
+            if (MiniGames.Current != null) MiniGames.Current.HostOnLaunched(victim, hazard ? null : attacker, knock);
         }
 
         public void HostOnFinish(Contestant c, int place) =>
@@ -301,7 +316,8 @@ namespace KnockbackRumble
 
         public void HostOnRoundEnd(RaceManager race)
         {
-            if (Kind == EventKind.Crumble)
+            if (MiniGames.Current != null) MiniGames.Current.HostRoundEnd(race);
+            if (race.HasEliminations)
             {
                 // Everyone still standing gets the top bonus; the last ones knocked out get the rest.
                 int survivors = 0;
@@ -357,6 +373,14 @@ namespace KnockbackRumble
             {
                 foreach (var c in race.Contestants)
                     if (c != null && !c.Eliminated) HostAward(c, StandingPerSecond, Reason.Standing);
+            }
+            else if (MiniGames.Current != null)
+            {
+                var mini = MiniGames.Current;
+                if (mini.StandingPerSecond > 0)
+                    foreach (var c in race.Contestants)
+                        if (c != null && !c.Eliminated) HostAward(c, mini.StandingPerSecond, Reason.Standing);
+                mini.HostSecond(race);
             }
         }
 
