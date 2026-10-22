@@ -180,6 +180,8 @@ namespace KnockbackRumble
             // Cosmetics: owned items as slot * 256 + id, and the equipped id per slot.
             public List<int> owned = new List<int>();
             public int[] outfit = new int[Outfit.SlotCount];
+            // The character picked on the CHARACTER screen
+            public int character;
         }
 
         static Data data;
@@ -325,6 +327,13 @@ namespace KnockbackRumble
                 }
                 return o;
             }
+        }
+
+        /// <summary>The character you play as (CHARACTER screen).</summary>
+        public static int Character
+        {
+            get => Characters.Get(D.character) != null ? D.character : Characters.All[0].id;
+            set { D.character = value; Save(); }
         }
 
         public static void SetOutfit(Outfit o)

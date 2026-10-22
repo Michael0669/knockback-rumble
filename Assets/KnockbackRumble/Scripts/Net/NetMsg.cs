@@ -47,11 +47,12 @@ namespace KnockbackRumble
         Heckle = 69,        // from netId, target netId, kind
         Outfit = 70,        // netId + 6 cosmetic ids (sent by the owner at round start)
         Mini = 71,          // mini-game event from the host: game kind, op, payload (see MiniGame)
+        Character = 72,     // netId + character id (sent by the owner at round start)
     }
 
     public static class NetProtocol
     {
-        public const int Version = 4;
+        public const int Version = 5;
         public const int MaxPlayers = 8;
         public const int DirectPort = 7777;
         public const byte NoId = 255;

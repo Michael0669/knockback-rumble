@@ -16,6 +16,7 @@ namespace KnockbackRumble
         DummyVisual visual;
         Transform turntable;
         Color shownColor = new Color(-1f, 0f, 0f);
+        int shownCharacter = -1;
         float yaw = 200f, spinVelocity;
 
         public static CustomizePreview Get()
@@ -65,6 +66,28 @@ namespace KnockbackRumble
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.12f, 0.1f, 0.18f, 1f);
             cam.enabled = false;
+        }
+
+        /// <summary>Show this character in this color (call every frame the screen is open).</summary>
+        public void ShowCharacter(int character, Color color)
+        {
+            if (visual == null || color != shownColor)
+            {
+                if (visual != null) Destroy(visual.gameObject);
+                var go = new GameObject("PreviewDummy");
+                go.transform.SetParent(turntable, false);
+                visual = go.AddComponent<DummyVisual>();
+                visual.Build(color, character);
+                shownColor = color;
+                shownCharacter = character;
+            }
+            else if (character != shownCharacter)
+            {
+                visual.SetCharacter(character);
+                shownCharacter = character;
+                Puffs.SmokeBurst(turntable.position + Vector3.up, 6, 1.2f, 0.5f, 0.5f);
+            }
+            cam.enabled = true;
         }
 
         /// <summary>Show this outfit on a dummy of this color (call every frame the screen is open).</summary>

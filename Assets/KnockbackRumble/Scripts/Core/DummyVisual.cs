@@ -45,6 +45,7 @@ namespace KnockbackRumble
         static readonly Color[] HairColors =
         {
             new Color(0.16f, 0.11f, 0.08f), new Color(0.35f, 0.22f, 0.12f), new Color(0.62f, 0.42f, 0.2f), new Color(0.1f, 0.09f, 0.09f),
+            new Color(0.78f, 0.78f, 0.76f), // grey
         };
         static readonly Color CamoTan = new Color(0.62f, 0.55f, 0.42f), CamoOlive = new Color(0.42f, 0.45f, 0.3f),
             CamoBrown = new Color(0.38f, 0.3f, 0.22f), Olive = new Color(0.36f, 0.39f, 0.25f), DarkOlive = new Color(0.25f, 0.27f, 0.18f),
@@ -59,9 +60,39 @@ namespace KnockbackRumble
         /// haircut and beard (seeded from the color, so everyone sees the same guy). Bones (pivots) are the
         /// ones the animation drives: model, armL/R (shoulders), legL/R (hips).
         /// </summary>
-        public void Build(Color bodyColor)
+        /// <summary>Which character this dummy is (-1 = a random look seeded from its color).</summary>
+        public int Character { get; private set; } = -1;
+        Color builtColor;
+
+        public void Build(Color bodyColor, int character = -1)
         {
             motor = GetComponent<DummyMotor>();
+            builtColor = bodyColor;
+            Character = Characters.Get(character) != null ? character : -1;
+            BuildBody(bodyColor, Characters.Get(Character));
+            if (trail == null) MakeTrail(bodyColor);
+        }
+
+        /// <summary>Switch to another character (rebuilds the body; the weapon in hand stays).</summary>
+        public void SetCharacter(int character)
+        {
+            if (Characters.Get(character) == null || character == Character || model == null) return;
+            var held = shownWeapon;
+            model.gameObject.SetActive(false);
+            Destroy(model.gameObject);
+            model = null;
+            gun = null;
+            shownWeapon = null;
+            hairParts.Clear(); beardParts.Clear(); vestParts.Clear(); pantsParts.Clear(); bootParts.Clear(); gloveParts.Clear();
+            outfitParts.Clear();
+            CurrentOutfit = new Outfit();
+            Character = character;
+            BuildBody(builtColor, Characters.Get(character));
+            if (held != null) ShowWeapon(held);
+        }
+
+        void BuildBody(Color bodyColor, CharacterDef def)
+        {
             string hex = ColorUtility.ToHtmlStringRGB(bodyColor);
             int hash = (Mathf.RoundToInt(bodyColor.r * 255f) * 73856093 ^ Mathf.RoundToInt(bodyColor.g * 255f) * 19349663
                         ^ Mathf.RoundToInt(bodyColor.b * 255f) * 83492791) & 0x7fffffff;
@@ -72,7 +103,12 @@ namespace KnockbackRumble
             var vest = Mats.Get("Soldier_Vest_" + hex, vestColor);
             var vestDark = Mats.Get("Soldier_VestDark_" + hex, vestColor * 0.75f);
             var band = Mats.Get("Soldier_Band_" + hex, bodyColor);
-            int skinIndex = rng.Next(SkinTones.Length), hairIndex = rng.Next(HairColors.Length);
+            int skinIndex = rng.Next(SkinTones.Length), hairIndex = rng.Next(4);
+            if (def != null)
+            {
+                skinIndex = Mathf.Clamp(def.skin, 0, SkinTones.Length - 1);
+                hairIndex = Mathf.Clamp(def.hairColor, 0, HairColors.Length - 1);
+            }
             var skin = Mats.Get("Soldier_Skin" + skinIndex, SkinTones[skinIndex]);
             var skinDark = Mats.Get("Soldier_SkinDark" + skinIndex, SkinTones[skinIndex] * 0.85f);
             var hair = Mats.Get("Soldier_Hair" + hairIndex, HairColors[hairIndex]);
@@ -128,7 +164,9 @@ namespace KnockbackRumble
             }
             Shapes.Make(PrimitiveType.Cube, "Mouth", head, new Vector3(0f, -0.09f, 0.185f), new Vector3(0.08f, 0.015f, 0.02f), black, false);
 
-            switch (rng.Next(4)) // beard
+            int beardStyle = rng.Next(4), hairStyle = rng.Next(4);
+            if (def != null) { beardStyle = def.beard; hairStyle = def.hairStyle; }
+            switch (beardStyle) // beard
             {
                 case 0: // full beard
                     beardParts.Add(LowPoly.Make(LowPoly.Chunk(2), "Beard", head, new Vector3(0f, -0.13f, 0.06f), new Vector3(0.32f, 0.2f, 0.28f), hair));
@@ -145,7 +183,7 @@ namespace KnockbackRumble
                 // case 3: clean shaven
             }
 
-            switch (rng.Next(4)) // hair
+            switch (hairStyle) // hair
             {
                 case 0: // buzz cut
                     hairParts.Add(LowPoly.Make(LowPoly.Chunk(0), "Buzz", head, new Vector3(0f, 0.07f, -0.015f), new Vector3(0.39f, 0.3f, 0.39f), hair));
@@ -186,7 +224,10 @@ namespace KnockbackRumble
             hand.SetParent(armR, false);
             hand.localPosition = new Vector3(0f, DummyRig.BodyHandY, 0f);
             hand.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        }
 
+        void MakeTrail(Color bodyColor)
+        {
             trail = gameObject.AddComponent<TrailRenderer>();
             trail.time = 0.45f;
             trail.startWidth = 0.6f;

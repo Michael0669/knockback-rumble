@@ -103,7 +103,7 @@ namespace KnockbackRumble
         public Vector3 HeadPosition => transform.position + Vector3.up * 2.1f;
 
         public static Contestant Create(string name, Color color, bool isPlayer, Persona persona, Vector3 position, Quaternion rotation,
-            byte netId = 0, ulong ownerPeer = 1, bool isLocal = true, bool isHuman = false)
+            byte netId = 0, ulong ownerPeer = 1, bool isLocal = true, bool isHuman = false, int character = -1)
         {
             var go = new GameObject(name);
             go.transform.SetPositionAndRotation(position, rotation);
@@ -111,7 +111,7 @@ namespace KnockbackRumble
             var motor = go.AddComponent<DummyMotor>();   // also adds Rigidbody + CapsuleCollider
             var dent = go.AddComponent<DentBody>();
             var visual = go.AddComponent<DummyVisual>();
-            visual.Build(color);
+            visual.Build(color, character);
             var weapons = go.AddComponent<WeaponHolder>();
 
             var c = go.AddComponent<Contestant>();
