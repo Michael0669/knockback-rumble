@@ -75,6 +75,7 @@ namespace KnockbackRumble
         {
             var race = RaceManager.Instance;
             if (ReadyStreaks.Count == 0 || Eliminated || race == null || race.State != RaceManager.Phase.Racing) return false;
+            if (MiniGames.Current != null && !MiniGames.Current.StreaksAllowed) return false;
             var s = ReadyStreaks[0];
             ReadyStreaks.RemoveAt(0);
             Gadgets.CallStreak(this, s);

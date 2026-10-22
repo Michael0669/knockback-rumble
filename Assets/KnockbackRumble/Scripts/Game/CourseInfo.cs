@@ -9,12 +9,53 @@ namespace KnockbackRumble
         Gauntlet = 0,   // obstacle course; cash for finishing position
         CashGrab = 1,   // hold money bags to earn; get hit and you drop them
         Crumble = 2,    // floor falls apart; cash for every second you survive
+
+        // Mini-games (see the MiniGames folder)
+        HotPotato = 3,
+        ThroneRoom = 4,
+        MakeItRain = 5,
+        GreasedSumo = 6,
+        SpinCycle = 7,
+        FloorIsLava = 8,
+        TurfWar = 9,
+        RocketRodeo = 10,
+        ToiletRoll = 11,
+        HoleInTheWall = 12,
+        PottyPanic = 13,
+        BirdBrained = 14,
+        RedLight = 15,
+        BalloonPop = 16,
+        Treadmill = 17,
     }
 
     public static class Events
     {
+        /// <summary>Every game that can be put in a tournament, in menu order.</summary>
+        public static readonly EventKind[] All =
+        {
+            EventKind.Gauntlet, EventKind.CashGrab, EventKind.Crumble,
+            EventKind.HotPotato, EventKind.ThroneRoom, EventKind.MakeItRain, EventKind.GreasedSumo, EventKind.SpinCycle,
+            EventKind.FloorIsLava, EventKind.TurfWar, EventKind.RocketRodeo, EventKind.ToiletRoll, EventKind.HoleInTheWall,
+            EventKind.PottyPanic, EventKind.BirdBrained, EventKind.RedLight, EventKind.BalloonPop, EventKind.Treadmill,
+        };
+
+        /// <summary>Short description for the tournament picker.</summary>
+        public static string Blurb(EventKind k)
+        {
+            var g = MiniGames.Get(k);
+            if (g != null) return g.Blurb;
+            switch (k)
+            {
+                case EventKind.CashGrab: return "Grab the money bags and don't let go.";
+                case EventKind.Crumble: return "The floor falls apart under you.";
+                default: return "Obstacle course race to the finish.";
+            }
+        }
+
         public static string Title(EventKind k)
         {
+            var g = MiniGames.Get(k);
+            if (g != null) return g.Title;
             switch (k)
             {
                 case EventKind.CashGrab: return "CASH GRAB";
@@ -25,6 +66,8 @@ namespace KnockbackRumble
 
         public static string Objective(EventKind k)
         {
+            var g = MiniGames.Get(k);
+            if (g != null) return g.Objective;
             switch (k)
             {
                 case EventKind.CashGrab: return "Grab a money bag and hold it. $10 a second. Get hit and you drop it!";
@@ -36,6 +79,8 @@ namespace KnockbackRumble
         /// <summary>The whole event in one line (loading screen).</summary>
         public static string Goal(EventKind k)
         {
+            var g = MiniGames.Get(k);
+            if (g != null) return g.Goal;
             switch (k)
             {
                 case EventKind.CashGrab: return "Grab a money bag and hold on to it.";
@@ -47,6 +92,8 @@ namespace KnockbackRumble
         /// <summary>Three rule cards for the loading screen: { big text, small text } each.</summary>
         public static string[,] RuleCards(EventKind k)
         {
+            var g = MiniGames.Get(k);
+            if (g != null) return g.Cards;
             switch (k)
             {
                 case EventKind.CashGrab:
@@ -76,6 +123,8 @@ namespace KnockbackRumble
         /// <summary>How long the event lasts (seconds after GO).</summary>
         public static float Duration(EventKind k)
         {
+            var g = MiniGames.Get(k);
+            if (g != null) return g.Duration;
             switch (k)
             {
                 case EventKind.CashGrab: return 100f;

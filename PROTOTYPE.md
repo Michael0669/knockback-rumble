@@ -1,8 +1,10 @@
 # Knockback Rumble — Prototype
 
-A **show** of 3 events, played back to back. Everything you do earns or loses **cash**; the richest dummy
-after the last event wins the show. Playable **offline vs bots** or **online with friends** through Steam.
-Everything is greybox.
+A **tournament** of mini-games, played back to back. The host picks the games (or hits **RANDOMIZE**), everyone
+plays them in a row, and everything you do earns or loses **cash**. The richest dummy after the last game wins the
+tournament. Playable **offline vs bots** or **online with friends** through Steam.
+
+There are **18 games**: the three classic events below, plus 15 mini-games (see "The mini-games").
 
 1. **The Gauntlet**: the Scrap Sprint obstacle course: conveyor with bumpers, spiked wrecking balls, hover
    platforms, crusher hall (container shortcut), spin bar, Punch Alley (boxing gloves), Piston Pit, Wind Tunnel
@@ -40,7 +42,7 @@ for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countd
 
 ## The menu
 
-- **PLAY OFFLINE**: you vs 7 bots.
+- **PLAY OFFLINE**: you vs 7 bots. Opens **PICK THE GAMES** first (see "Tournaments").
 - **LOADOUT**: pick your gear (also in the lobby and the pause menu; changes apply at the next event).
 - **HOST A GAME**: makes a friends-only Steam lobby. Invite friends from there.
 - **Join a friend**: accept their Steam invite, or right-click them in your Steam friends list → **Join Game**.
@@ -49,6 +51,48 @@ for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countd
   and RESET PROFILE (click twice) to go back to a brand-new player. Take these out before release.
 
 Your level, XP and wallet show at the bottom right of the main menu.
+
+## Tournaments
+
+**PICK THE GAMES** opens when you press PLAY OFFLINE, or START TOURNAMENT in the lobby (host only).
+
+- **PICK GAMES**: click games to add them. They're played in the order you click them (the number on the card).
+  Click one again to take it out. **ALL** picks every game, **CLEAR** empties the list.
+- **RANDOMIZE**: choose how many games (1 to 20). The game picks them for you, with no repeats until every game
+  has been played once.
+- **START!** begins. Your choice is saved for next time.
+
+After the last game, **R** starts a new tournament with the same settings (re-randomized if RANDOMIZE is on).
+Online, **L** sends everyone back to the lobby, where the host can change the games.
+
+## The mini-games
+
+Mini-game arenas are built the first time they're played (during the loading screen), so there's nothing to
+rebuild in the editor. Each one lives in `Scripts/MiniGames/`, one file per game.
+
+| Game | What you do | Rules |
+|---|---|---|
+| **Hot Potato** | Pass a ticking bomb by touching or shoving someone | Holding it when it blows = out. +$40 per blast survived. Shoves only. |
+| **Throne Room** | King of the hill around a golden toilet | $20/s alone on the throne, $6/s if shared. It moves every 20 s. |
+| **Make It Rain** | Grab coins, cash stacks and gold bars falling from the sky | $15 / $35 / $75. Bombs fall too (red shadows). |
+| **Greased Sumo** | Shove people off a greasy, shrinking ring | One life. Shoves only. Low grip. |
+| **Spin Cycle** | Jump two sweeper bars inside a giant washing machine | One life. Bars speed up. Shoves only. |
+| **The Floor Is Lava** | Climb two spiral staircases around a tower as lava rises | One life (lava = out). Guns allowed. |
+| **Turf War** | Paint floor tiles your color by running over them | +$1 per tile painted, $8 per tile you own at the end. |
+| **Rocket Rodeo** | Everyone gets unlimited rocket launchers on floating islands | +$100 extra per knock-off. |
+| **Toilet Roll Hill** | Race up a hill dodging giant toilet rolls | Race payouts like the Gauntlet. Shoves only. |
+| **Hole in the Wall** | Get through the holes in walls sliding across the stage | One life. +$40 per wall survived. Shoves only. |
+| **Porta-Potty Panic** | Musical chairs: when the music stops, run into a potty | One too few each round; no potty = out. +$60 per round survived. |
+| **Bird Brained** | Dodge seagull "presents" (red circles show where) | One life. Shoves only. |
+| **Red Light, Green Light** | Run while Lord Dookington's back is turned | Move on red and you get zapped back. Race payouts. |
+| **Balloon Pop** | Pop balloons in a bounce house; trampolines reach the high ones | $15 per balloon, $60 gold. |
+| **Treadmill of Doom** | Keep running on a speeding treadmill, jump/dodge the junk | One life (the grinder at the back). |
+
+Games with "one life" pay $5-6 a second while you're in, plus survivor bonuses at the end, like Crumble Plaza.
+Knock-offs (+$100) and falls (-$50) count in every game.
+
+**Adding a game:** copy one of the files in `Scripts/MiniGames/`, give it a new `EventKind` (in `CourseInfo.cs`),
+add it to the list at the top of `MiniGames` (in `MiniGame.cs`) and to `Events.All`.
 
 ## Customize (outfits)
 
@@ -106,7 +150,7 @@ This checks that two copies of the game can see each other.
    Make sure `Assets/KnockbackRumble/Scenes/ScrapSprint.unity` is in the scene list (the Build Scene menu adds it).
 2. Run the built `.exe`. It opens in a window. Click **HOST DIRECT**. If Windows Firewall asks, click **Allow**.
 3. In Unity, press **Play** and click **JOIN DIRECT** (IP `127.0.0.1`).
-4. You should see both players in the lobby. In the build, press **START THE SHOW**.
+4. You should see both players in the lobby. In the build, press **START TOURNAMENT**, pick the games, then **START!**.
 5. Play a bit in each window. Check that the other dummy moves smoothly, shots, grenades and streaks show up on
    both, the cash numbers match, bags move on both, and the Crumble Plaza floor falls the same way on both.
 
@@ -160,13 +204,15 @@ Assets/KnockbackRumble/
   Editor/            Knockback Rumble menu, voice generator, build step (writes steam_appid.txt next to builds)
   Scripts/Core/      DummyMotor (movement), DentBody (knockback), DummyVisual (the soldier model + outfits), Contestant
   Scripts/Cosmetics/ Cosmetics (outfit items), CustomizePreview (the spinning dummy on the CUSTOMIZE screen)
+  Scripts/MiniGames/ MiniGame (base class + the MiniGames list), MiniKit (arena building blocks), CollectGame (shared by
+                     Make It Rain and Balloon Pop), and one file per mini-game
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera (with aim zoom)
   Scripts/Loadout/   Loadouts (perks, gadgets, streaks, unlock levels) and Profile (level, XP, wallet)
   Scripts/Weapons/   WeaponModels (gun, rocket, bomb, spike ball models), Puffs (low-poly smoke/fire/sparks/confetti),
                      WeaponDef (gun balance), WeaponHolder, Weapons, Rocket, WeaponPickup (ammo crates), Fx,
                      Gadgets (+ Grenade, StickyMine), FallingBomb + FlyBy (Payout Streaks)
   Scripts/AI/        BotBrain
-  Scripts/Game/      WorldLook (sun, sky, fog, bloom/color grading), ShowManager (show flow, cash, bags), MoneyBag, RaceManager (runs one event), CourseInfo,
+  Scripts/Game/      WorldLook (sun, sky, fog, bloom/color grading), Tournament (the host's game picks), ShowManager (tournament flow, cash, bags), MoneyBag, RaceManager (runs one event), CourseInfo,
                      HUD, MenuUI + UiSkin (menus, loadout screen), Announcer (all the jokes), Personas (voice packs), PrototypeBootstrap
   Scripts/Audio/     Sfx + SfxRunner (sound effects and music), VoiceLine, VoiceDirector (spoken lines, off for now)
   Scripts/Net/       NetSession (lobby, relay, clock), MatchController (race <-> network), SteamService,

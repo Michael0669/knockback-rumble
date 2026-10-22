@@ -28,6 +28,8 @@ namespace KnockbackRumble
         bool showVolumes;   // the VOICE VOLUMES pop-up
         bool showLoadout;   // the LOADOUT screen
         bool showCustomize; // the CUSTOMIZE screen
+        bool showTournament; // the PICK THE GAMES screen
+        bool tournamentOffline; // START on that screen plays offline vs bots (else: hosts the lobby's tournament)
         int customizeSlot;
         Outfit editingOutfit;
         string shopMessage;
@@ -94,7 +96,10 @@ namespace KnockbackRumble
             if (screen == Screen.Connecting) showVolumes = false;
             if (screen == Screen.Race && !Paused) { showVolumes = false; showLoadout = false; showCustomize = false; }
             if (screen == Screen.Connecting) { showLoadout = false; showCustomize = false; }
-            bool popup = showVolumes || showLoadout || showCustomize;
+            if (screen == Screen.Race || screen == Screen.Connecting) showTournament = false;
+            if (screen == Screen.Lobby && !session.IsHost) showTournament = false;
+            if (screen == Screen.Main && !tournamentOffline) showTournament = false;
+            bool popup = showVolumes || showLoadout || showCustomize || showTournament;
             if (!showCustomize) CustomizePreviewHide();
 
             if (screen == Screen.Race)
@@ -137,6 +142,7 @@ namespace KnockbackRumble
             if (showVolumes) DrawVolumes(session, W, H, oy);
             else if (showLoadout) DrawLoadout(W, H, oy);
             else if (showCustomize) DrawCustomize(W, H, oy);
+            else if (showTournament) DrawTournament(match, W, H, oy);
         }
 
         // =====================================================================
@@ -170,10 +176,7 @@ namespace KnockbackRumble
 
             if (UiSkin.Button(new Rect(px + 40f, py + 266f, 292f, 88f), "PLAY OFFLINE", UiSkin.Dark,
                     "You vs " + match.OfflineBots + " bots", 32))
-            {
-                match.OfflineName = CleanName();
-                match.StartOffline();
-            }
+                OpenTournament(true);
             if (UiSkin.Button(new Rect(px + 348f, py + 266f, 292f, 88f), "LOADOUT", UiSkin.Teal, "Level " + Profile.Level, 32))
                 OpenLoadout();
 
@@ -318,15 +321,13 @@ namespace KnockbackRumble
                 else DrawEmptySlot(slot, session.FillBots, session.IsHost);
             }
 
-            // ---- The show ----
+            // ---- The tournament ----
             float rx = cx + 228f, ry = oy + 214f, rw = 512f, rh = 640f;
             UiSkin.Panel(new Rect(rx, ry, rw, rh));
-            UiSkin.Heading(new Rect(rx + 40f, ry + 26f, 400f, 44f), "THE SHOW", 38, UiSkin.Cream);
+            UiSkin.Heading(new Rect(rx + 40f, ry + 26f, 400f, 44f), "THE TOURNAMENT", 38, UiSkin.Cream);
 
             int dummies = session.FillBots ? MatchController.RaceSize : session.Peers.Count;
-            string lineup = "";
-            for (int i = 0; i < ShowManager.Lineup.Length; i++)
-                lineup += (i > 0 ? "  >  " : "") + Events.Title(ShowManager.Lineup[i]);
+            string lineup = session.IsHost ? Tournament.Summary() : "The host picks the games";
             UiSkin.Text(new Rect(rx + 40f, ry + 82f, 440f, 32f), lineup, UiSkin.Body, 20, UiSkin.Cream, TextAnchor.MiddleLeft, false);
             UiSkin.Text(new Rect(rx + 40f, ry + 116f, 440f, 32f), dummies + " dummies  -  most cash wins", UiSkin.Body, 23,
                 UiSkin.Muted, TextAnchor.MiddleLeft, false);
@@ -357,9 +358,9 @@ namespace KnockbackRumble
                 var startRect = new Rect(rx + 32f, ry + 392f, rw - 64f, 120f);
                 var m = GUI.matrix;
                 GUI.matrix = m * UiSkin.Around(startRect.center, 0f, Pulse());
-                bool start = UiSkin.Button(startRect, "START THE SHOW", UiSkin.Yellow, "3 events, everyone in the lobby plays", 46);
+                bool start = UiSkin.Button(startRect, "START TOURNAMENT", UiSkin.Yellow, "Pick the games, then go!", 46);
                 GUI.matrix = m;
-                if (start) match.HostStartRace();
+                if (start) OpenTournament(false);
             }
             else
             {
@@ -368,7 +369,7 @@ namespace KnockbackRumble
                 UiSkin.Image(new Rect(wait.center.x - 48f, wait.y + 48f + Mathf.Sin(Time.unscaledTime * 3f) * 6f, 96f, 96f), UiSkin.Avatar,
                     UiSkin.Gold);
                 UiSkin.Heading(new Rect(wait.x, wait.y + 172f, wait.width, 50f), "WAITING FOR THE HOST", 32, UiSkin.Gold, TextAnchor.MiddleCenter);
-                UiSkin.Text(new Rect(wait.x, wait.y + 222f, wait.width, 36f), "to start the show" + Dots(), UiSkin.Body, 24, UiSkin.Cream,
+                UiSkin.Text(new Rect(wait.x, wait.y + 222f, wait.width, 36f), "to start the tournament" + Dots(), UiSkin.Body, 24, UiSkin.Cream,
                     TextAnchor.MiddleCenter, false);
             }
 
@@ -772,6 +773,131 @@ namespace KnockbackRumble
                 Profile.SetLoadout(editing);
                 showLoadout = false;
             }
+        }
+
+        // =====================================================================
+        // Tournament: pick the games
+        // =====================================================================
+
+        GUIStyle cardTitle, cardBlurb;
+
+        void OpenTournament(bool offline)
+        {
+            tournamentOffline = offline;
+            showTournament = true;
+            showLoadout = false;
+            showCustomize = false;
+            showVolumes = false;
+            GUI.FocusControl(null);
+        }
+
+        void DrawTournament(MatchController match, float W, float H, float oy)
+        {
+            if (cardTitle == null)
+            {
+                cardTitle = new GUIStyle { font = UiSkin.Display, fontSize = 23, wordWrap = true, alignment = TextAnchor.UpperCenter };
+                cardBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 16, wordWrap = true, alignment = TextAnchor.UpperCenter };
+            }
+            UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.75f));
+            float cx = W / 2f, pw = 1540f, ph = 940f;
+            var panel = new Rect(cx - pw / 2f, oy + (1080f - ph) / 2f, pw, ph);
+            UiSkin.Panel(panel);
+            UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 26f, 700f, 60f), "PICK THE GAMES", 52, UiSkin.Gold);
+            bool random = Tournament.Randomize;
+            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 1000f, 30f),
+                random ? "Randomize is on: the games are picked for you. Most cash at the end wins."
+                       : "Click games to add them. They're played in the order you pick them. Most cash at the end wins.",
+                UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
+
+            // ---- The games ----
+            var all = Events.All;
+            int cols = 6;
+            float gx = panel.x + 40f, gy = panel.y + 140f, gap = 14f;
+            float cw = (1130f - (cols - 1) * gap) / cols, ch = 214f;
+            for (int i = 0; i < all.Length; i++)
+            {
+                var k = all[i];
+                var r = new Rect(gx + (i % cols) * (cw + gap), gy + (i / cols) * (ch + gap), cw, ch);
+                int pick = Tournament.PickIndex(k);
+                bool on = !random && pick >= 0;
+                UiSkin.Card(r);
+                if (on) UiSkin.Pill(new Rect(r.x + 5f, r.y + 5f, r.width - 10f, r.height - 10f), new Color(1f, 0.79f, 0.16f, 0.28f));
+                float a = random ? 0.75f : 1f;
+                cardTitle.normal.textColor = new Color(UiSkin.Cream.r, UiSkin.Cream.g, UiSkin.Cream.b, a);
+                cardBlurb.normal.textColor = new Color(UiSkin.Muted.r, UiSkin.Muted.g, UiSkin.Muted.b, a);
+                GUI.Label(new Rect(r.x + 10f, r.y + 46f, r.width - 20f, 62f), Events.Title(k), cardTitle);
+                GUI.Label(new Rect(r.x + 12f, r.y + 112f, r.width - 24f, r.height - 118f), Events.Blurb(k), cardBlurb);
+                if (on)
+                {
+                    UiSkin.Image(new Rect(r.x + r.width / 2f - 19f, r.y + 8f, 38f, 38f), UiSkin.Dot, UiSkin.Gold);
+                    UiSkin.Text(new Rect(r.x + r.width / 2f - 19f, r.y + 8f, 38f, 38f), (pick + 1).ToString(), UiSkin.Display, 22, UiSkin.Ink,
+                        TextAnchor.MiddleCenter, false);
+                }
+                else if (!random)
+                {
+                    UiSkin.Text(new Rect(r.x, r.y + 8f, r.width, 34f), "+ ADD", UiSkin.Display, 20, new Color(1f, 1f, 1f, 0.35f), TextAnchor.MiddleCenter, false);
+                }
+                if (!random && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                {
+                    Tournament.TogglePick(k);
+                    Sfx.Ui(pick >= 0 ? "ui_click" : "ui_equip");
+                }
+            }
+
+            // ---- Settings column ----
+            float sx = panel.x + 1200f, sw = pw - 1200f - 40f, sy = panel.y + 140f;
+            if (UiSkin.Button(new Rect(sx, sy, sw, 80f), "PICK GAMES", random ? UiSkin.Dark : UiSkin.Yellow, "choose them yourself", 30))
+                Tournament.Randomize = false;
+            sy += 92f;
+            if (UiSkin.Button(new Rect(sx, sy, sw, 80f), "RANDOMIZE", random ? UiSkin.Yellow : UiSkin.Dark, "surprise everyone", 30))
+                Tournament.Randomize = true;
+            sy += 104f;
+
+            var box = new Rect(sx, sy, sw, 190f);
+            UiSkin.Card(box);
+            if (random)
+            {
+                UiSkin.Text(new Rect(box.x, box.y + 14f, box.width, 30f), "HOW MANY GAMES", UiSkin.Display, 22, UiSkin.LabelBlue, TextAnchor.MiddleCenter, false);
+                UiSkin.Text(new Rect(box.x, box.y + 56f, box.width, 70f), Tournament.RandomCount.ToString(), UiSkin.Display, 64, UiSkin.Gold,
+                    TextAnchor.MiddleCenter);
+                if (UiSkin.Button(new Rect(box.x + 20f, box.y + 62f, 64f, 60f), "-", UiSkin.Dark, null, 40)) Tournament.RandomCount--;
+                if (UiSkin.Button(new Rect(box.xMax - 84f, box.y + 62f, 64f, 60f), "+", UiSkin.Dark, null, 40)) Tournament.RandomCount++;
+                UiSkin.Text(new Rect(box.x, box.y + 136f, box.width, 30f), "no repeats until all " + Events.All.Length + " are played",
+                    UiSkin.BodyBold, 16, UiSkin.Muted, TextAnchor.MiddleCenter, false);
+            }
+            else
+            {
+                int n = Tournament.Picks.Count;
+                UiSkin.Text(new Rect(box.x, box.y + 14f, box.width, 30f), "GAMES PICKED", UiSkin.Display, 22, UiSkin.LabelBlue, TextAnchor.MiddleCenter, false);
+                UiSkin.Text(new Rect(box.x, box.y + 56f, box.width, 70f), n.ToString(), UiSkin.Display, 64, n > 0 ? UiSkin.Gold : UiSkin.Red,
+                    TextAnchor.MiddleCenter);
+                float bw = (box.width - 60f) / 2f;
+                if (UiSkin.Button(new Rect(box.x + 20f, box.y + 128f, bw, 48f), "ALL", UiSkin.Dark, null, 24)) Tournament.PickAll();
+                if (UiSkin.Button(new Rect(box.x + 40f + bw, box.y + 128f, bw, 48f), "CLEAR", UiSkin.Dark, null, 24)) Tournament.ClearPicks();
+            }
+            sy += 210f;
+
+            UiSkin.Text(new Rect(sx, sy, sw, 30f), tournamentOffline ? "You vs " + match.OfflineBots + " bots" : "Everyone in the lobby plays",
+                UiSkin.BodyBold, 19, UiSkin.Muted, TextAnchor.MiddleCenter, false);
+
+            // ---- Go / back ----
+            bool ready = Tournament.Ready;
+            var startRect = new Rect(sx, panel.yMax - 236f, sw, 110f);
+            var m = GUI.matrix;
+            if (ready) GUI.matrix = m * UiSkin.Around(startRect.center, 0f, Pulse());
+            bool go = UiSkin.Button(startRect, "START!", UiSkin.Yellow, Tournament.GameCount + (Tournament.GameCount == 1 ? " game" : " games"), 46, ready);
+            GUI.matrix = m;
+            if (go && ready)
+            {
+                showTournament = false;
+                if (tournamentOffline)
+                {
+                    match.OfflineName = CleanName();
+                    match.StartOffline();
+                }
+                else match.HostStartRace();
+            }
+            if (UiSkin.Button(new Rect(sx, panel.yMax - 112f, sw, 76f), "BACK", UiSkin.Dark, null, 30)) showTournament = false;
         }
 
         // =====================================================================

@@ -522,9 +522,47 @@ def music_show():
     save("music_show", song, 0.62)
 
 
+# ---------------------------------------------------------------- mini-games
+
+def minigames():
+    # Bomb tick: a dry wooden click with a tiny metal ring
+    tk = bp(noise(0.05), 1800, 6000) * decay(0.05, 120) + osc(2400, 0.05) * decay(0.05, 90) * 0.4
+    save("tick", tk, 0.7)
+    # Red-light zap: buzzy electric crackle sliding down
+    d = 0.45
+    buzz = osc(sweep(900, 180, d), d, "saw") * (0.6 + 0.4 * np.sign(np.sin(2 * np.pi * 60 * t_(d))))
+    crackle = bp(noise(d), 2000, 8000) * (rng.uniform(0, 1, int(SR * d)) > 0.9) * 1.5
+    save("zap", drive(mix(buzz * decay(d, 5), crackle * decay(d, 4)), 2.5), 0.8)
+    # Balloon pop: a sharp burst and a rubbery slap
+    pop = mix(hp(noise(0.08), 900) * decay(0.08, 60) * 1.4, osc(sweep(500, 140, 0.06), 0.06) * decay(0.06, 50) * 0.6)
+    save("pop", pop, 0.85)
+    # Toilet flush: a roaring swirl that drains away with a gurgle
+    d = 1.8
+    swirl = sweep_bp(noise(d), 300, 1400, 2.5) * env(d, 0.08, 0.4, 0.8, 0.9)
+    gurgle = np.zeros(int(SR * d))
+    for _ in range(14):
+        st = rng.uniform(0.7, 1.6)
+        f0 = rng.uniform(250, 600)
+        g = osc(sweep(f0, f0 * 1.8, 0.07), 0.07) * decay(0.07, 30) * 0.5
+        i = int(SR * st)
+        gurgle[i:i + len(g)] += g[:len(gurgle) - i]
+    save("flush", mix(lp(swirl, 2500), gurgle, lp(noise(d), 200) * env(d, 0.05, 0.3, 0.5, 1.0) * 0.6), 0.8)
+    # Record scratch (the music stops!)
+    d = 0.5
+    x = np.linspace(0, 1, int(SR * d))
+    rate = np.where(x < 0.45, 1.0 - 2.2 * x, -0.4 + 1.6 * (x - 0.45))
+    scr = bp(noise(d), 600, 3200) * (np.abs(rate) + 0.2) + osc(220 + 400 * np.abs(rate), d, "saw") * 0.25
+    save("scratch", scr * env(d, 0.005, 0.1, 0.9, 0.12), 0.8)
+    # Porta-potty door slam: a hollow plastic thunk with a latch click
+    thunk = lp(noise(0.3), 700) * decay(0.3, 18) * 1.4 + osc(sweep(140, 90, 0.3), 0.3) * decay(0.3, 14)
+    latch = at(bp(noise(0.02), 2500, 7000) * decay(0.02, 200) * 0.6, 0.12)
+    save("slam", mix(thunk, latch), 0.85)
+
+
 if __name__ == "__main__":
     print("Writing sounds to", os.path.normpath(OUT))
     ui(); show(); weapons(); hits(); movement(); cash(); gadgets(); streaks(); hazards()
     music_game(); music_menu(); music_show()
     heckles()
+    minigames()
     print("Done.")

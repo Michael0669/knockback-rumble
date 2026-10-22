@@ -89,6 +89,7 @@ namespace KnockbackRumble
                 bool done = p != null && (p.Finished || p.Eliminated);
                 if (!done) DrawPlayerPanel(race, show, p, W, H);
                 DrawToast(W, H);
+                if (!MenuUI.Paused && race.State == RaceManager.Phase.Racing) DrawBanner(race, p, W, H);
                 if (!MenuUI.Paused && p != null && !done && !scoped) DrawCrosshair(W, H);
                 if (done) DrawSpectating(p, W, H);
                 DrawHeckled(W, H);
@@ -131,6 +132,12 @@ namespace KnockbackRumble
                 foreach (var b in show.Bags) if (b != null && !b.Carried) loose++;
                 status = loose > 0 ? loose + (loose == 1 ? " BAG" : " BAGS") + " ON THE FLOOR" : "ALL BAGS TAKEN - GO GET 'EM";
             }
+            else if (race.Mini != null && race.State == RaceManager.Phase.Racing)
+            {
+                status = race.Mini.Status(race);
+                if (status == null && race.IsRace) status = "FINISHED  " + race.Finishers.Count + " / " + race.FinishTarget;
+                else if (status == null && race.HasEliminations) status = "STILL STANDING  " + race.AliveCount;
+            }
             if (status != null) Label(new Rect(W / 2f - 300f, 66f, 600f, 34f), status, mid, UiSkin.Cream, UiSkin.Display, 24);
         }
 
@@ -150,7 +157,7 @@ namespace KnockbackRumble
             if (p == null) return;
             var r = new Rect(22f, 16f, 320f, 92f);
             UiSkin.Panel(r);
-            Label(new Rect(r.x + 22f, r.y + 6f, 280f, 26f), "SHOW CASH", left, UiSkin.LabelBlue, UiSkin.Display, 20);
+            Label(new Rect(r.x + 22f, r.y + 6f, 280f, 26f), "TOURNAMENT CASH", left, UiSkin.LabelBlue, UiSkin.Display, 20);
             Label(new Rect(r.x + 22f, r.y + 28f, 280f, 60f), Money(show.Cash(p)), left, UiSkin.Gold, UiSkin.Display, 48);
 
             // Popups slide down and fade under the counter.
@@ -225,6 +232,15 @@ namespace KnockbackRumble
 
             // Loadout, bottom right
             var w = p.Weapons;
+            if (race.Mini != null && !race.Mini.WeaponsAllowed)
+            {
+                // Shove-only game: just the shove.
+                var sr = new Rect(W - 420f, H - 96f, 398f, 76f);
+                UiSkin.Panel(sr);
+                Label(new Rect(sr.x + 22f, sr.y, 354f, sr.height), w.ShoveCooldown > 0f ? "[E] SHOVE  ..." : "[E] SHOVE  READY  (no guns this game)",
+                    left, w.ShoveCooldown > 0f ? Color.gray : UiSkin.Cream, UiSkin.Display, 20);
+                return;
+            }
             var r = new Rect(W - 420f, H - 228f, 398f, 208f);
             UiSkin.Panel(r);
             float x = r.x + 22f, y = r.y + 14f;
@@ -324,6 +340,20 @@ namespace KnockbackRumble
             Label(new Rect(W / 2f - 500f, H * 0.62f, 1000f, 60f), Announcer.Toast, mid, UiSkin.Gold);
         }
 
+        /// <summary>A mini-game's big message ("YOU HAVE THE BOMB!", "RED LIGHT!").</summary>
+        void DrawBanner(RaceManager race, Contestant p, float W, float H)
+        {
+            if (race.Mini == null || p == null) return;
+            string text = race.Mini.Banner(p, out Color color);
+            if (string.IsNullOrEmpty(text)) return;
+            float wob = 1f + 0.04f * Mathf.Sin(Time.time * 7f);
+            var r = new Rect(W / 2f - 600f, H * 0.17f, 1200f, 90f);
+            var old = GUI.matrix;
+            GUI.matrix = old * UiSkin.Around(r.center, 0f, wob);
+            Label(r, text, big, color);
+            GUI.matrix = old;
+        }
+
         void DrawSpectating(Contestant p, float W, float H)
         {
             var watching = PlayerInputDriver.Spectating;
@@ -385,11 +415,11 @@ namespace KnockbackRumble
             var r = new Rect(W / 2f - 520f, 130f, 1040f, 150f + order.Count * rowH);
             UiSkin.Panel(r);
             Label(new Rect(r.x, r.y + 18f, r.width, 50f), "STANDINGS", mid, UiSkin.Gold, UiSkin.Display, 44);
-            Label(new Rect(r.x, r.y + 66f, r.width, 30f), Events.Title(race.Kind) + "  -  EVENT " + (show.RoundIndex + 1) + " OF " + show.RoundCount,
+            Label(new Rect(r.x, r.y + 66f, r.width, 30f), Events.Title(race.Kind) + "  -  GAME " + (show.RoundIndex + 1) + " OF " + show.RoundCount,
                 mid, UiSkin.LabelBlue, UiSkin.Display, 22);
 
             float y = r.y + 104f;
-            string[] heads = { "CONTESTANT", "STATUS", "K.O.", "FALLS", "THIS EVENT", "TOTAL" };
+            string[] heads = { "CONTESTANT", "STATUS", "K.O.", "FALLS", "THIS GAME", "TOTAL" };
             float[] xs = { 90f, 420f, 590f, 680f, 790f, 920f };
             float[] ws = { 320f, 160f, 80f, 90f, 120f, 100f };
             for (int i = 0; i < heads.Length; i++)
@@ -405,8 +435,10 @@ namespace KnockbackRumble
                 Box(new Rect(r.x + 76f, y + rowH / 2f - 8f, 16f, 16f), c.Color);
                 Label(new Rect(r.x + xs[0] + 12f, y, ws[0] - 12f, rowH), c.DisplayName + (c.IsPlayer ? "  (you)" : ""), left, col, UiSkin.Body, 24);
 
+                string miniStatus = race.Mini != null ? race.Mini.StatusFor(c) : null;
                 string status = c.Eliminated ? "OUT"
                               : c.Finished ? "FINISHED #" + c.FinishPlace
+                              : miniStatus != null ? miniStatus
                               : show.BagOf(c) != null ? "HAS A BAG"
                               : c.StreakCount > 0 ? c.StreakCount + " STREAK"
                               : "";
@@ -427,7 +459,7 @@ namespace KnockbackRumble
             float cx = W / 2f;
             var panel = new Rect(cx - 460f, H * 0.24f, 920f, 250f);
             UiSkin.Panel(panel);
-            Label(new Rect(panel.x, panel.y + 18f, panel.width, 40f), "EVENT " + (show.RoundIndex + 1) + " OF " + show.RoundCount, mid,
+            Label(new Rect(panel.x, panel.y + 18f, panel.width, 40f), "GAME " + (show.RoundIndex + 1) + " OF " + show.RoundCount, mid,
                 UiSkin.LabelBlue, UiSkin.Display, 28);
             Label(new Rect(panel.x, panel.y + 56f, panel.width, 80f), Events.Title(race.Kind), big, UiSkin.Gold);
             var obj = new GUIStyle(center) { fontSize = 22 };
@@ -449,7 +481,7 @@ namespace KnockbackRumble
             Label(new Rect(r.x, r.y + 56f, r.width, 64f), head, big, place == 1 ? UiSkin.Gold : UiSkin.Cream);
 
             float y = r.y + 130f;
-            HeaderRow(r.x, y, "THIS EVENT", "SHOW TOTAL");
+            HeaderRow(r.x, y, "THIS GAME", "TOTAL");
             y += 34f;
             for (int i = 0; i < race.Results.Count; i++)
             {
@@ -458,7 +490,7 @@ namespace KnockbackRumble
             }
 
             float secsLeft = Mathf.Max(0f, show.NextRoundAt - Time.time);
-            string next = Events.Title(ShowManager.KindFor(show.RoundIndex + 1));
+            string next = Events.Title(show.KindAt(show.RoundIndex + 1));
             string footer = "NEXT: " + next + " in " + Mathf.CeilToInt(secsLeft) +
                             (Net.IsHost ? "   (R to start now" + (Net.Online ? ", L for the lobby)" : ")") : "");
             Label(new Rect(r.x, y + 12f, r.width, 40f), footer, mid, UiSkin.Gold, UiSkin.Display, 24);
@@ -472,8 +504,8 @@ namespace KnockbackRumble
             var r = new Rect(W / 2f - 400f, 110f, 800f, 150f + 34f + race.Results.Count * rowH + rewardsH + 70f);
             UiSkin.Panel(r);
             var winner = race.Results.Count > 0 ? race.Results[0] : null;
-            Label(new Rect(r.x, r.y + 16f, r.width, 40f), "THE SHOW IS OVER", mid, UiSkin.LabelBlue, UiSkin.Display, 30);
-            string head = winner == null ? "NOBODY WINS" : winner.IsPlayer ? "YOU WIN THE SHOW!" : winner.DisplayName.ToUpperInvariant() + " WINS!";
+            Label(new Rect(r.x, r.y + 16f, r.width, 40f), "THE TOURNAMENT IS OVER", mid, UiSkin.LabelBlue, UiSkin.Display, 30);
+            string head = winner == null ? "NOBODY WINS" : winner.IsPlayer ? "YOU WIN THE TOURNAMENT!" : winner.DisplayName.ToUpperInvariant() + " WINS!";
             float wob = 1f + 0.03f * Mathf.Sin(Time.time * 4f);
             var old = GUI.matrix;
             var headRect = new Rect(r.x, r.y + 56f, r.width, 72f);
@@ -482,7 +514,7 @@ namespace KnockbackRumble
             GUI.matrix = old;
 
             float y = r.y + 140f;
-            HeaderRow(r.x, y, "LAST EVENT", "TOTAL");
+            HeaderRow(r.x, y, "LAST GAME", "TOTAL");
             y += 34f;
             for (int i = 0; i < race.Results.Count; i++)
             {
@@ -512,8 +544,8 @@ namespace KnockbackRumble
                 y += rewardsH;
             }
 
-            string next = !Net.Online ? "R (or Start) for a new show  -  Esc for the menu"
-                        : Net.IsHost ? "R (or Start) for a new show  -  L to go back to the lobby"
+            string next = !Net.Online ? "R (or Start) for a new tournament  -  Esc for the menu"
+                        : Net.IsHost ? "R (or Start) for a new tournament  -  L to go back to the lobby"
                         : "Waiting for the host...";
             Label(new Rect(r.x, y + 12f, r.width, 40f), next, mid, UiSkin.Gold, UiSkin.Display, 24);
         }
@@ -567,7 +599,7 @@ namespace KnockbackRumble
             float cx = W / 2f;
 
             // ---- Event name and the one-line goal ----
-            Label(new Rect(cx - 400f, 90f, 800f, 36f), "EVENT " + (show.RoundIndex + 1) + " OF " + show.RoundCount, mid,
+            Label(new Rect(cx - 400f, 90f, 800f, 36f), "GAME " + (show.RoundIndex + 1) + " OF " + show.RoundCount, mid,
                 UiSkin.LabelBlue, UiSkin.Display, 30);
             float pop = 1f + 0.02f * Mathf.Sin(Time.time * 2.4f);
             var titleRect = new Rect(cx - 600f, 132f, 1200f, 110f);
@@ -599,7 +631,7 @@ namespace KnockbackRumble
             }
             else
             {
-                Label(new Rect(cx - 600f, 580f, 1200f, 44f), "Most cash after " + show.RoundCount + " events wins.", center,
+                Label(new Rect(cx - 600f, 580f, 1200f, 44f), "Most cash after " + show.RoundCount + (show.RoundCount == 1 ? " game" : " games") + " wins the tournament.", center,
                     UiSkin.Cream, UiSkin.Display, 32);
             }
 
