@@ -201,8 +201,10 @@ app, and it's expected.
 
 ## How it works (short version)
 
-- **Dent meter:** no health. Every hit adds Dent (0–200%); the higher it is, the farther the next hit launches you.
-  Fall off and you respawn (last checkpoint in the Gauntlet, a random spot in the arenas) with Dent reset.
+- **Damage %:** no health. Every hit adds to the big % number bottom-left (0–200%). Like Smash Bros, hits from
+  other players barely move you at low %, and launch you farther and farther as it climbs (about 0.4x at 0%,
+  1.6x at 100%, 3.4x at 200%; the curve is in `DentBody.Hit`). Hazards push the same at any %.
+  Fall off and you respawn (last checkpoint in the Gauntlet, a random spot in the arenas) back at 0%.
 - **Cash:** the host is the bank. It decides every payout and sends it to everyone, so all screens match.
   Balance numbers are at the top of `Scripts/Game/ShowManager.cs`.
 - **Crumble Plaza's floor** falls on a schedule made from a shared random seed and the shared clock,
