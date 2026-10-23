@@ -88,7 +88,13 @@ namespace KnockbackRumble
                 dir.Normalize();
             }
 
-            float knock = baseKnock * (1f + Dent / 100f * dentScaling) * KnockTakenMultiplier;
+            // Hits from other players (and bots) follow a Smash-style curve: at low % they barely move
+            // you, and they build up fast past ~100%. Hazards and your own blasts use the flat rule so
+            // courses and rocket jumps feel the same as always.
+            float d = Dent / 100f;
+            bool fromRival = attacker != null && !self;
+            float mult = fromRival ? 0.4f + 0.9f * d + 0.3f * d * d : 1f + d * dentScaling;
+            float knock = baseKnock * mult * KnockTakenMultiplier;
             // Your own blasts never stun you, so rocket jumps stay controllable.
             float stun = self ? 0f : Mathf.Clamp(knock * 0.05f, 0.2f, 1.8f) * StunMultiplier;
             Motor.Launch(dir * knock, stun);

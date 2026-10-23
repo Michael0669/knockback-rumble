@@ -221,14 +221,7 @@ namespace KnockbackRumble
         {
             if (p == null) return;
 
-            // Dent meter, bottom left
-            float dent = p.Dent.Dent;
-            Color dc = Color.Lerp(Color.white, Color.yellow, Mathf.Clamp01(dent / 60f));
-            dc = Color.Lerp(dc, Palette.Hazard, Mathf.Clamp01((dent - 60f) / 90f));
-            UiSkin.Panel(new Rect(22f, H - 160f, 240f, 140f));
-            Label(new Rect(30f, H - 150f, 224f, 30f), "DENT", mid, Color.white);
-            Label(new Rect(30f, H - 120f, 224f, 80f), Mathf.RoundToInt(dent) + "%", big, dc);
-            Label(new Rect(30f, H - 54f, 224f, 26f), "higher dent = you fly farther", center, UiSkin.Muted, UiSkin.BodyBold, 15, false);
+            DrawPercent(p, H);
 
             // Loadout, bottom right
             var w = p.Weapons;
@@ -291,6 +284,36 @@ namespace KnockbackRumble
 
             string shove = w.ShoveCooldown > 0f ? "[E] SHOVE  ..." : "[E] SHOVE  READY";
             Label(new Rect(x, y, 354f, 28f), shove, left, w.ShoveCooldown > 0f ? Color.gray : UiSkin.Cream, UiSkin.Display, 18);
+        }
+
+        static float shownPercent, percentShakeUntil, percentPop;
+
+        /// <summary>The damage percent, Smash Bros style: one big number, white to red, that shakes when you get hit.</summary>
+        void DrawPercent(Contestant p, float H)
+        {
+            float dent = p.Dent.Dent;
+            if (dent > shownPercent + 0.5f) { percentShakeUntil = Time.time + 0.35f; percentPop = 1f; }
+            shownPercent = dent;
+            percentPop = Mathf.MoveTowards(percentPop, 0f, Time.deltaTime * 4f);
+
+            Color c = Color.Lerp(Color.white, new Color(1f, 0.85f, 0.2f), Mathf.Clamp01(dent / 50f));
+            c = Color.Lerp(c, new Color(1f, 0.45f, 0.1f), Mathf.Clamp01((dent - 50f) / 50f));
+            c = Color.Lerp(c, new Color(0.85f, 0.05f, 0.05f), Mathf.Clamp01((dent - 100f) / 60f));
+
+            Vector2 shake = Time.time < percentShakeUntil ? Random.insideUnitCircle * 9f : Vector2.zero;
+            var r = new Rect(30f + shake.x, H - 175f + shake.y, 330f, 150f);
+            var old = GUI.matrix;
+            GUI.matrix = old * UiSkin.Around(r.center, shake.x * 0.4f, 1f + percentPop * 0.18f);
+            // Thick dark outline, then the number.
+            var style = new GUIStyle(huge) { fontSize = 130, alignment = TextAnchor.MiddleLeft };
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * Mathf.PI / 4f;
+                Label(new Rect(r.x + Mathf.Cos(a) * 5f, r.y + Mathf.Sin(a) * 5f, r.width, r.height), Mathf.RoundToInt(dent) + "%", style,
+                    new Color(0.05f, 0.03f, 0.08f, 0.95f), null, 0, false);
+            }
+            Label(r, Mathf.RoundToInt(dent) + "%", style, c, null, 0, true);
+            GUI.matrix = old;
         }
 
         void DrawCrosshair(float W, float H)
