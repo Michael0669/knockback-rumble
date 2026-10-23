@@ -12,11 +12,18 @@ namespace KnockbackRumble
     /// </summary>
     public static class GunModels
     {
+        class Part
+        {
+            public Mesh mesh;
+            public Material[] mats;
+        }
+
         class Fit
         {
             public Quaternion rot;
             public float scale;
             public Vector3 pos, muzzle;
+            public readonly List<Part> parts = new List<Part>();
         }
 
         static readonly Dictionary<string, Fit> fits = new Dictionary<string, Fit>();
@@ -32,7 +39,8 @@ namespace KnockbackRumble
             return null;
         }
 
-        static float LengthFor(WeaponDef def) => def == WeaponDef.LongShot ? 1.3f : def == WeaponDef.BoomStick ? 1.0f : 0.42f;
+        /// <summary>Overall length in meters, next to a 1.85 m character.</summary>
+        static float LengthFor(WeaponDef def) => def == WeaponDef.LongShot ? 1.05f : def == WeaponDef.BoomStick ? 0.85f : 0.32f;
 
         /// <summary>The gun in the hand. muzzle = barrel tip in parent space (null for the built-in models).</summary>
         public static GameObject Build(WeaponDef def, Transform parent, out Vector3? muzzle)
@@ -56,50 +64,74 @@ namespace KnockbackRumble
             adjust.localRotation = fit.rot;
             adjust.localScale = Vector3.one * fit.scale;
             adjust.localPosition = fit.pos;
-            var inst = Object.Instantiate(prefab, adjust, false);
-            Quiet(inst);
+            // Draw the exact meshes we measured (baked once, no skinning), so the size is always right.
+            foreach (var part in fit.parts)
+            {
+                var go = new GameObject("Part");
+                go.transform.SetParent(adjust, false);
+                go.AddComponent<MeshFilter>().sharedMesh = part.mesh;
+                go.AddComponent<MeshRenderer>().sharedMaterials = part.mats;
+            }
             muzzle = fit.muzzle;
             return root.gameObject;
         }
 
-        /// <summary>No colliders, no animator (the rest pose is the "holding it" pose), no shadows' worth of fuss.</summary>
-        static void Quiet(GameObject inst)
-        {
-            foreach (var a in inst.GetComponentsInChildren<Animator>(true)) a.enabled = false;
-            foreach (var c in inst.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
-            foreach (var r in inst.GetComponentsInChildren<SkinnedMeshRenderer>(true)) r.updateWhenOffscreen = true;
-            // The pistol comes with its muzzle flash as a mesh: hide it (we have our own flashes).
-            foreach (var r in inst.GetComponentsInChildren<Renderer>(true)) if (IsFlash(r)) r.gameObject.SetActive(false);
-        }
-
+        /// <summary>
+        /// Bake every mesh of the model (in its rest pose) into plain meshes in one shared space, then work
+        /// out which way it points and how big it is from exactly those vertices.
+        /// </summary>
         static Fit Measure(GameObject prefab, float targetLength)
         {
             var temp = new GameObject("GunMeasure");
             var inst = Object.Instantiate(prefab, temp.transform, false);
             foreach (var a in inst.GetComponentsInChildren<Animator>(true)) a.enabled = false;
+            var fit = new Fit();
             var pts = new List<Vector3>();
+            var toRoot = temp.transform.worldToLocalMatrix;
             foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
             {
                 if (IsFlash(r)) continue;
+                Mesh src;
+                Matrix4x4 m;
+                bool baked = false;
                 if (r is SkinnedMeshRenderer smr)
                 {
                     if (smr.sharedMesh == null) continue;
-                    var baked = new Mesh();
-                    smr.BakeMesh(baked, true);
-                    var m = Matrix4x4.TRS(smr.transform.position, smr.transform.rotation, Vector3.one);
-                    foreach (var v in baked.vertices) pts.Add(m.MultiplyPoint3x4(v));
-                    Object.Destroy(baked);
+                    src = new Mesh();
+                    smr.BakeMesh(src, true); // in the renderer's space, its scale already applied
+                    m = toRoot * Matrix4x4.TRS(smr.transform.position, smr.transform.rotation, Vector3.one);
+                    baked = true;
                 }
                 else
                 {
                     var mf = r.GetComponent<MeshFilter>();
                     if (mf == null || mf.sharedMesh == null) continue;
-                    var m = r.transform.localToWorldMatrix;
-                    foreach (var v in mf.sharedMesh.vertices) pts.Add(m.MultiplyPoint3x4(v));
+                    src = mf.sharedMesh;
+                    m = toRoot * r.transform.localToWorldMatrix;
                 }
+                var verts = src.vertices;
+                var normals = src.normals;
+                for (int i = 0; i < verts.Length; i++)
+                {
+                    verts[i] = m.MultiplyPoint3x4(verts[i]);
+                    pts.Add(verts[i]);
+                }
+                for (int i = 0; i < normals.Length; i++) normals[i] = m.MultiplyVector(normals[i]).normalized;
+                var mesh = new Mesh { name = prefab.name + "_" + r.gameObject.name };
+                if (verts.Length > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                mesh.vertices = verts;
+                if (normals.Length == verts.Length) mesh.normals = normals;
+                var uv = src.uv;
+                if (uv != null && uv.Length == verts.Length) mesh.uv = uv;
+                mesh.subMeshCount = src.subMeshCount;
+                for (int sm = 0; sm < src.subMeshCount; sm++) mesh.SetTriangles(src.GetTriangles(sm), sm);
+                if (normals.Length != verts.Length) mesh.RecalculateNormals();
+                mesh.RecalculateBounds();
+                fit.parts.Add(new Part { mesh = mesh, mats = r.sharedMaterials });
+                if (baked) Object.Destroy(src);
             }
             Object.Destroy(temp);
-            if (pts.Count < 8) return null;
+            if (pts.Count < 8 || fit.parts.Count == 0) return null;
 
             Vector3 min = pts[0], max = pts[0];
             foreach (var p in pts) { min = Vector3.Min(min, p); max = Vector3.Max(max, p); }
@@ -121,7 +153,8 @@ namespace KnockbackRumble
             float mid = (min[U] + max[U]) * 0.5f;
             Vector3 u = Axis(U) * (front.center[U] >= mid ? 1f : -1f);
 
-            var fit = new Fit { rot = Quaternion.Inverse(Quaternion.LookRotation(f, u)), scale = targetLength / len };
+            fit.rot = Quaternion.Inverse(Quaternion.LookRotation(f, u));
+            fit.scale = targetLength / len;
             Vector3 center = (min + max) * 0.5f;
             float height = ext[U];
             // Hold it a bit behind the middle and below the barrel (where a grip is).
