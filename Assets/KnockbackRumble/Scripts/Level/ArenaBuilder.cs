@@ -66,7 +66,7 @@ namespace KnockbackRumble
             // Money dais in the middle with a ramp on each side
             Block(root, "Dais", new Vector3(0f, 0.75f, 0f), new Vector3(10f, 1.5f, 10f), Mats.Get("Vault_Steel", new Color(0.45f, 0.48f, 0.52f)));
             Block(root, "DaisTop", new Vector3(0f, 1.505f, 0f), new Vector3(9.2f, 0.01f, 9.2f), Mats.Get("Carpet_Red", new Color(0.7f, 0.08f, 0.12f)), false);
-            Block(root, "DaisTrim", new Vector3(0f, 1.45f, 0f), new Vector3(10.1f, 0.12f, 10.1f), gold, false);
+            Block(root, "DaisTrim", new Vector3(0f, 1.42f, 0f), new Vector3(10.1f, 0.12f, 10.1f), gold, false); // top sits just under the carpet (no flicker)
             for (int i = 0; i < 4; i++)
             {
                 var rot = Quaternion.Euler(0f, i * 90f, 0f);

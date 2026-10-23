@@ -64,7 +64,7 @@ namespace KnockbackRumble
             // The royal dais with four ramps
             MiniKit.Block(root, "Dais", new Vector3(0f, 0.75f, 0f), new Vector3(9f, 1.5f, 9f), steel);
             MiniKit.Block(root, "DaisCarpet", new Vector3(0f, 1.505f, 0f), new Vector3(8.4f, 0.01f, 8.4f), carpet, false);
-            MiniKit.Block(root, "DaisTrim", new Vector3(0f, 1.45f, 0f), new Vector3(9.1f, 0.12f, 9.1f), gold, false);
+            MiniKit.Block(root, "DaisTrim", new Vector3(0f, 1.42f, 0f), new Vector3(9.1f, 0.12f, 9.1f), gold, false); // top sits just under the carpet (no flicker)
             for (int i = 0; i < 4; i++)
             {
                 float yaw = i * 90f;
@@ -109,7 +109,7 @@ namespace KnockbackRumble
                     new Vector3(0.18f, 0.35f, 0.18f), gold);
             LowPoly.Make(LowPoly.Cylinder(8), "Beam", t, new Vector3(0f, 10f, 0f), new Vector3(1.2f, 20f, 1.2f), Mats.Unlit("Throne_Beam", new Color(1f, 0.9f, 0.4f, 0.25f)));
 
-            MiniKit.FlatRing(root, "ThroneZone", Spots[0] + Vector3.up * 0.05f, ZoneRadius, Mats.Unlit("Throne_Zone", new Color(1f, 0.85f, 0.25f)), 0.1f);
+            MiniKit.FlatRing(root, "ThroneZone", Spots[0] + Vector3.up * 0.1f, ZoneRadius, Mats.Unlit("Throne_Zone", new Color(1f, 0.85f, 0.25f)), 0.1f);
 
             info.spawnPoints = MiniKit.TwoRings(Origin, 11f, 14f);
             info.center = Origin;
@@ -157,7 +157,7 @@ namespace KnockbackRumble
                 Sfx.Ui("streak_ready", 0.6f);
                 Puffs.Confetti(target + Vector3.up * 2f, 30);
             }
-            if (zone != null) zone.position = shownSpot + Vector3.up * 0.05f;
+            if (zone != null) zone.position = shownSpot + Vector3.up * 0.1f;
             if (throne != null && instant) throne.position = shownSpot;
         }
 
