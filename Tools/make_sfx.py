@@ -559,10 +559,50 @@ def minigames():
     save("slam", mix(thunk, latch), 0.85)
 
 
+def arsenal():
+    # Spray-n-Pray: a tiny dry tick-pop (it fires 12 times a second)
+    smg = mix(osc(sweep(1300, 400, 0.05), 0.05) * decay(0.05, 70), hp(noise(0.04), 2500) * decay(0.04, 150) * 0.8)
+    save("smg", smg, 0.6)
+    # Bonk Rifle: a punchy mid crack
+    bonk = mix(bp(noise(0.12), 600, 4000) * decay(0.12, 40) * 1.2, osc(sweep(420, 120, 0.12), 0.12) * decay(0.12, 30))
+    save("rifle", drive(bonk, 1.8), 0.8)
+    # Hand Cannon: a fat boom with a short tail
+    d = 0.6
+    hc = lp(noise(d), 1600) * decay(d, 10) * 1.3 + osc(sweep(160, 45, d), d) * decay(d, 8) * 1.3
+    save("cannon", echo(drive(mix(hp(noise(0.03), 2000) * decay(0.03, 120), hc), 2.5), 0.12, 0.25, 2), 0.9)
+    # Leaf Blower: a short motor-and-wind burst (plays in quick succession)
+    d = 0.16
+    mot = osc(95, d, "saw") * 0.5 + osc(190, d, "square") * 0.2
+    wind = bp(noise(d), 500, 3000) * 0.9
+    save("blower", lp(mix(mot, wind), 3000) * env(d, 0.01, 0.05, 0.8, 0.05), 0.55)
+    # Air horn: two brassy saws, slightly detuned
+    d = 0.9
+    horn = osc(440, d, "saw") + osc(446, d, "saw") * 0.8 + osc(554, d, "saw") * 0.6
+    save("airhorn", drive(lp(horn, 2800), 1.6) * env(d, 0.02, 0.1, 0.9, 0.15), 0.85)
+    # Banana slip: a rising slide whistle
+    d = 0.55
+    save("slip", osc(sweep(300, 1600, d), d) * env(d, 0.01, 0.1, 0.9, 0.1), 0.7)
+    # Anvil: a big metal clang
+    d = 1.4
+    clang = mix(bell(620, d, 3.5), bell(1180, d, 4.5) * 0.6, bell(1760, d, 6) * 0.4, lp(noise(0.1), 1500) * decay(0.1, 40))
+    save("anvil", clang, 0.85)
+    # Bounce pad: a springy cartoon boing with a whoosh
+    d = 0.5
+    boing = osc(sweep(180, 520, d), d) * (1 + 0.4 * np.sin(2 * np.pi * 28 * t_(d))) * decay(d, 6)
+    save("spring", mix(boing, sweep_bp(noise(d), 500, 3000, 2) * env(d, 0.02, 0.3, 0, 0) * 0.5), 0.8)
+
+
 if __name__ == "__main__":
     print("Writing sounds to", os.path.normpath(OUT))
+    import sys
+    if len(sys.argv) > 1:
+        # e.g. python make_sfx.py arsenal  (only rebuilds that group)
+        for group in sys.argv[1:]:
+            globals()[group]()
+        sys.exit(0)
     ui(); show(); weapons(); hits(); movement(); cash(); gadgets(); streaks(); hazards()
     music_game(); music_menu(); music_show()
     heckles()
     minigames()
+    arsenal()
     print("Done.")

@@ -71,6 +71,7 @@ namespace KnockbackRumble
             switch (def.kind)
             {
                 case WeaponKind.Shotgun:
+                    if (def == WeaponDef.LeafBlower) break; // the gust puffs are drawn in Shotgun()
                     Fx.Muzzle(muzzle, dir, def.color, 0.55f);
                     Puffs.SmokeBurst(muzzle + dir * 0.4f, 3, 1.2f, 0.3f, 0.35f);
                     break;
@@ -79,22 +80,32 @@ namespace KnockbackRumble
                     Puffs.SmokeBurst(muzzle - dir * 1.1f, 3, 1.5f, 0.35f, 0.4f); // back-blast
                     break;
                 case WeaponKind.Hitscan:
-                    Fx.Muzzle(muzzle, dir, def.color, def == WeaponDef.LongShot ? 0.45f : 0.22f);
+                    Fx.Muzzle(muzzle, dir, def.color, def == WeaponDef.LongShot || def == WeaponDef.HandCannon ? 0.45f
+                        : def == WeaponDef.SprayNPray ? 0.16f : 0.22f);
                     break;
             }
 
             string sound = def.kind == WeaponKind.Melee ? "shove"
+                         : def == WeaponDef.LeafBlower ? "blower"
                          : def.kind == WeaponKind.Shotgun ? "shotgun"
+                         : def == WeaponDef.BigFlush ? "flush"
                          : def.kind == WeaponKind.Rocket ? "rocket"
-                         : def == WeaponDef.LongShot ? "sniper" : "pistol";
-            float range = def == WeaponDef.LongShot ? 140f : def.kind == WeaponKind.Shotgun ? 70f : 45f;
-            Sfx.At(sound, origin, 1f, 0.07f, range);
+                         : def == WeaponDef.LongShot ? "sniper"
+                         : def == WeaponDef.HandCannon ? "cannon"
+                         : def == WeaponDef.BonkRifle ? "rifle"
+                         : def == WeaponDef.SprayNPray ? "smg" : "pistol";
+            float range = def == WeaponDef.LongShot || def == WeaponDef.HandCannon ? 140f
+                        : def.kind == WeaponKind.Shotgun && def != WeaponDef.LeafBlower ? 70f : 45f;
+            Sfx.At(sound, origin, def == WeaponDef.LeafBlower ? 0.6f : 1f, 0.07f, range);
+            if (def == WeaponDef.BigFlush) Sfx.At("rocket", origin, 0.7f, 0.07f, range);
 
             var c = owner != null ? owner.GetComponent<Contestant>() : null;
             if (c == null || !c.IsPlayer) return;
-            if (def.kind == WeaponKind.Shotgun) { ThirdPersonCamera.Shake(0.35f); ThirdPersonCamera.Kick(4f); }
-            else if (def == WeaponDef.LongShot) { ThirdPersonCamera.Shake(0.3f); ThirdPersonCamera.Kick(3f); }
+            if (def.kind == WeaponKind.Shotgun && def != WeaponDef.LeafBlower) { ThirdPersonCamera.Shake(0.35f); ThirdPersonCamera.Kick(4f); }
+            else if (def == WeaponDef.LongShot || def == WeaponDef.HandCannon) { ThirdPersonCamera.Shake(0.3f); ThirdPersonCamera.Kick(3f); }
+            else if (def == WeaponDef.BigFlush) { ThirdPersonCamera.Shake(0.4f); ThirdPersonCamera.Kick(5f); }
             else if (def.kind == WeaponKind.Rocket) ThirdPersonCamera.Shake(0.2f);
+            else if (def == WeaponDef.SprayNPray || def == WeaponDef.LeafBlower) ThirdPersonCamera.Shake(0.03f);
             else if (def.kind != WeaponKind.Melee) ThirdPersonCamera.Shake(0.08f);
         }
 
@@ -137,6 +148,17 @@ namespace KnockbackRumble
                 }
             }
 
+            if (def.pellets == 0)
+            {
+                // Leaf Blower: a cone of air puffs and the odd leaf.
+                for (int i = 0; i < 3; i++)
+                {
+                    Vector3 pd = Quaternion.LookRotation(dir) * (Quaternion.Euler(Random.Range(-def.spread, def.spread), Random.Range(-def.spread, def.spread), 0f) * Vector3.forward);
+                    Puffs.Smoke(muzzle + pd * 0.3f, pd * Random.Range(10f, 16f), Random.Range(0.12f, 0.22f), 0.35f);
+                }
+                if (Random.value < 0.3f)
+                    Puffs.Spark(muzzle, dir * 9f + Random.insideUnitSphere * 2f, 0.1f, 0.6f, new Color(0.55f, 0.75f, 0.2f));
+            }
             for (int i = 0; i < def.pellets; i++)
             {
                 Vector3 pd = Quaternion.Euler(Random.Range(-def.spread, def.spread), Random.Range(-def.spread, def.spread), 0f) * Vector3.forward;
@@ -167,7 +189,9 @@ namespace KnockbackRumble
         /// <summary>The visible bullet line. The Long Shot leaves a fat glowing streak and a line of smoke.</summary>
         static void Trail(WeaponDef def, Vector3 end)
         {
-            if (def == WeaponDef.LongShot)
+            if (def == WeaponDef.HandCannon) Fx.Tracer(muzzle, end, def.color, 0.16f, 0.2f);
+            else if (def == WeaponDef.SprayNPray) Fx.Tracer(muzzle, end, def.color, 0.05f, 0.06f);
+            else if (def == WeaponDef.LongShot)
             {
                 Fx.Tracer(muzzle, end, def.color, 0.22f, 0.45f);
                 Vector3 d = end - muzzle;
@@ -197,12 +221,13 @@ namespace KnockbackRumble
         }
 
         /// <summary>Launches every dummy in the radius; stronger near the center. Hits the owner too (rocket jumps).</summary>
-        public static void Explode(Vector3 pos, float radius, float knockback, float dent, GameObject owner, string weapon, float minLift = 0.35f)
+        public static void Explode(Vector3 pos, float radius, float knockback, float dent, GameObject owner, string weapon, float minLift = 0.35f,
+            bool spareOwner = false, bool fx = true)
         {
             var bodies = new List<DentBody>(DentBody.All);
             foreach (var body in bodies)
             {
-                if (body == null) continue;
+                if (body == null || (spareOwner && body.gameObject == owner)) continue;
                 Vector3 c = body.Center;
                 float d = Vector3.Distance(pos, c);
                 if (d > radius) continue;
@@ -210,7 +235,7 @@ namespace KnockbackRumble
                 Vector3 dir = d < 0.05f ? Vector3.up : (c - pos) / d;
                 body.Hit(dir, knockback * falloff, dent * falloff, owner, weapon, minLift);
             }
-            Fx.Explosion(pos, radius);
+            if (fx) Fx.Explosion(pos, radius);
         }
     }
 }

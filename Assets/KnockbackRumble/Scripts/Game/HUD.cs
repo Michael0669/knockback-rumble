@@ -241,12 +241,19 @@ namespace KnockbackRumble
             {
                 Label(new Rect(x, y, 260f, 40f), w.Held.name.ToUpperInvariant(), left, w.Held.color, UiSkin.Display, 30);
                 Color ammoCol = w.Ammo == 0 ? UiSkin.Red : UiSkin.Cream;
-                Label(new Rect(r.xMax - 150f, y, 128f, 40f), w.Ammo + " / " + w.Held.ammo, right, ammoCol, UiSkin.Display, 30);
-                // Ammo pips
-                int max = Mathf.Max(1, w.Held.ammo);
-                float pipW = Mathf.Min(26f, (r.width - 44f) / max - 4f);
-                for (int i = 0; i < max; i++)
-                    Box(new Rect(x + i * (pipW + 4f), y + 44f, pipW, 10f), i < w.Ammo ? w.Held.color : new Color(1f, 1f, 1f, 0.15f));
+                bool infinite = WeaponHolder.InfiniteAmmo;
+                Label(new Rect(r.xMax - 190f, y, 168f, 40f), infinite ? "NO LIMIT" : w.Ammo + " / " + w.MaxAmmo, right,
+                    infinite ? UiSkin.Gold : ammoCol, UiSkin.Display, 30);
+                int max = Mathf.Max(1, w.MaxAmmo);
+                if (infinite || max > 12)
+                    UiSkin.Bar(new Rect(x, y + 44f, r.width - 44f, 10f), infinite ? 1f : (float)w.Ammo / max, w.Held.color);
+                else
+                {
+                    // Ammo pips
+                    float pipW = Mathf.Min(26f, (r.width - 44f) / max - 4f);
+                    for (int i = 0; i < max; i++)
+                        Box(new Rect(x + i * (pipW + 4f), y + 44f, pipW, 10f), i < w.Ammo ? w.Held.color : new Color(1f, 1f, 1f, 0.15f));
+                }
                 if (w.Ammo == 0) Label(new Rect(x, y + 56f, 354f, 24f), "OUT OF AMMO - find a crate", left, UiSkin.Red, UiSkin.BodyBold, 18);
             }
             y += 84f;
@@ -276,8 +283,8 @@ namespace KnockbackRumble
                 int left2 = p.KnockoffsToNextStreak(out var next);
                 var si = Loadouts.StreakInfo(next);
                 string s = si != null
-                    ? "STREAK  " + p.StreakCount + " / " + si.cost + "  ->  " + si.name.ToUpperInvariant()
-                    : "STREAK  " + p.StreakCount + "  (all earned)";
+                    ? "KILL STREAK  " + p.StreakCount + " / " + si.cost + "  ->  " + si.name.ToUpperInvariant()
+                    : "KILL STREAK  " + p.StreakCount + "  (all earned)";
                 Label(new Rect(x, y, 354f, 34f), s, left, left2 == 1 ? UiSkin.Gold : UiSkin.Cream, UiSkin.Display, 20);
             }
             y += 42f;
@@ -523,7 +530,7 @@ namespace KnockbackRumble
         {
             float rowH = 40f;
             bool hasPlayer = race.Player != null;
-            float rewardsH = hasPlayer ? 130f + (show.NewUnlocks.Count > 0 ? 34f : 0f) : 0f;
+            float rewardsH = hasPlayer ? 130f : 0f;
             var r = new Rect(W / 2f - 400f, 110f, 800f, 150f + 34f + race.Results.Count * rowH + rewardsH + 70f);
             UiSkin.Panel(r);
             var winner = race.Results.Count > 0 ? race.Results[0] : null;
@@ -551,19 +558,22 @@ namespace KnockbackRumble
                 var box = new Rect(r.x + 30f, y, r.width - 60f, rewardsH - 10f);
                 UiSkin.Card(box);
                 Label(new Rect(box.x + 24f, box.y + 10f, box.width - 48f, 36f),
-                    "+" + Money(show.RewardCash) + " to your wallet     +" + show.RewardXp + " XP", left, UiSkin.Gold, UiSkin.Display, 28);
-                string lvl = show.LevelsGained > 0
-                    ? "LEVEL UP!  " + show.LevelBefore + "  ->  " + Profile.Level
-                    : "LEVEL " + Profile.Level + "   " + Profile.Xp + " / " + Profile.XpToNext + " XP";
-                Label(new Rect(box.x + 24f, box.y + 48f, box.width - 48f, 34f), lvl, left,
-                    show.LevelsGained > 0 ? UiSkin.Green : UiSkin.Cream, UiSkin.Display, 24);
-                float fill = Profile.XpToNext > 0 ? Mathf.Clamp01((float)Profile.Xp / Profile.XpToNext) : 1f;
-                var barR = new Rect(box.x + 24f, box.y + 88f, box.width - 48f, 14f);
-                UiSkin.Pill(barR, UiSkin.PillDark);
-                if (fill > 0.02f) UiSkin.Pill(new Rect(barR.x, barR.y, Mathf.Max(16f, barR.width * fill), barR.height), UiSkin.Green);
-                if (show.NewUnlocks.Count > 0)
-                    Label(new Rect(box.x + 24f, box.y + 108f, box.width - 48f, 30f), "UNLOCKED:  " + string.Join(",  ", show.NewUnlocks),
-                        left, UiSkin.Gold, UiSkin.BodyBold, 20);
+                    "+" + Money(show.RewardCash) + " to your wallet", left, UiSkin.Gold, UiSkin.Display, 28);
+                Label(new Rect(box.x + 24f, box.y + 10f, box.width - 48f, 36f),
+                    "WALLET " + Money(Profile.Wallet), right, UiSkin.Green, UiSkin.Display, 28);
+                // The cheapest thing you don't own yet, and how close you are to it.
+                string goal = Shop.NextUnlock(out int price);
+                if (goal != null)
+                {
+                    bool afford = Profile.Wallet >= price;
+                    Label(new Rect(box.x + 24f, box.y + 48f, box.width - 48f, 34f),
+                        afford ? "YOU CAN BUY " + goal.ToUpperInvariant() + " (" + Money(price) + ") IN LOADOUT!"
+                               : "NEXT UNLOCK: " + goal.ToUpperInvariant() + "  " + Money(Profile.Wallet) + " / " + Money(price),
+                        left, afford ? UiSkin.Green : UiSkin.Cream, UiSkin.Display, 22);
+                    UiSkin.Bar(new Rect(box.x + 24f, box.y + 88f, box.width - 48f, 14f), Mathf.Clamp01((float)Profile.Wallet / Mathf.Max(1, price)),
+                        afford ? UiSkin.Green : UiSkin.Gold);
+                }
+                else Label(new Rect(box.x + 24f, box.y + 48f, box.width - 48f, 34f), "YOU OWN EVERYTHING. SHOW-OFF.", left, UiSkin.Green, UiSkin.Display, 22);
                 y += rewardsH;
             }
 

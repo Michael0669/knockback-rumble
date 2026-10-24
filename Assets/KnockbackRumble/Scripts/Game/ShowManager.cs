@@ -33,6 +33,7 @@ namespace KnockbackRumble
 
         // ---- Balance ----
         public const int KnockoffCash = 100;
+        public const int BountyBonus = 50;
         public const int FallPenalty = 50;
         public const int BagPerSecond = 10;
         public const int StandingPerSecond = 5;
@@ -59,11 +60,7 @@ namespace KnockbackRumble
 
         // The local player's rewards when the show ends.
         public int RewardCash { get; private set; }
-        public int RewardXp { get; private set; }
-        public int LevelBefore { get; private set; }
-        public int LevelsGained { get; private set; }
         public bool RewardWon { get; private set; }
-        public readonly List<string> NewUnlocks = new List<string>();
 
         public class Popup
         {
@@ -160,15 +157,11 @@ namespace KnockbackRumble
         void FinishShow(RaceManager race)
         {
             ShowOver = true;
-            NewUnlocks.Clear();
             var p = race.Player;
             if (p == null) return;
             RewardCash = Cash(p);
             RewardWon = race.Results.Count > 0 && race.Results[0] == p;
-            LevelBefore = Profile.Level;
-            LevelsGained = Profile.AwardShow(RewardCash, RewardWon);
-            RewardXp = Profile.LastXpGained;
-            for (int lv = LevelBefore + 1; lv <= Profile.Level; lv++) NewUnlocks.AddRange(Profile.UnlocksAt(lv));
+            Profile.AwardShow(RewardCash, RewardWon);
         }
 
         // =====================================================================
@@ -293,7 +286,11 @@ namespace KnockbackRumble
 
         public void HostOnFell(Contestant victim, Contestant attacker)
         {
-            if (attacker != null && attacker != victim) HostAward(attacker, KnockoffCash, Reason.Knockoff);
+            if (attacker != null && attacker != victim)
+            {
+                bool bounty = attacker.Loadout != null && attacker.Loadout.Has(Perk.BountyHunter);
+                HostAward(attacker, KnockoffCash + (bounty ? BountyBonus : 0), Reason.Knockoff);
+            }
             bool deep = victim.Loadout != null && victim.Loadout.Has(Perk.DeepPockets);
             var mini = MiniGames.Current;
             if (mini == null || mini.FallPenalty) HostAward(victim, -(deep ? FallPenalty / 2 : FallPenalty), Reason.Fall);
@@ -305,7 +302,11 @@ namespace KnockbackRumble
         public void HostOnLaunched(Contestant victim, Contestant attacker, float knock, bool hazard)
         {
             if (!hazard && attacker != null && attacker != victim)
-                HostAward(victim, Mathf.Clamp(Mathf.RoundToInt(knock * 0.5f), 1, PainPayMax), Reason.PainPay);
+            {
+                int pay = Mathf.Clamp(Mathf.RoundToInt(knock * 0.5f), 1, PainPayMax);
+                if (victim.Loadout != null && victim.Loadout.Has(Perk.HazardPay)) pay *= 2;
+                HostAward(victim, pay, Reason.PainPay);
+            }
             var bag = BagOf(victim);
             if (bag != null && knock >= BagDropKnock) HostDropBag(bag, victim, false);
             if (MiniGames.Current != null) MiniGames.Current.HostOnLaunched(victim, hazard ? null : attacker, knock);

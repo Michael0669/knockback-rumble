@@ -270,7 +270,7 @@ namespace KnockbackRumble
             {
                 case WeaponKind.Shotgun: return def.range * 0.85f;
                 case WeaponKind.Rocket: return 22f;
-                default: return def == WeaponDef.LongShot ? 70f : 18f;
+                default: return def == WeaponDef.LongShot ? 70f : def == WeaponDef.HandCannon || def == WeaponDef.BonkRifle ? 30f : 18f;
             }
         }
 
@@ -302,7 +302,8 @@ namespace KnockbackRumble
                 float spread = holder.Held == WeaponDef.LongShot ? Mathf.Lerp(0.06f, 0.01f, skill) : Mathf.Lerp(0.18f, 0.04f, skill);
                 Vector3 aim = (aimAt - holder.FirePoint).normalized + Random.insideUnitSphere * spread;
                 holder.TryFire(aim);
-                fireTimer = holder.Held.cooldown + Random.Range(0.9f, 2.2f) * (1.5f - skill);
+                bool hose = holder.Held == WeaponDef.SprayNPray || holder.Held == WeaponDef.LeafBlower;
+                fireTimer = hose ? holder.Held.cooldown * 1.5f : holder.Held.cooldown + Random.Range(0.9f, 2.2f) * (1.5f - skill);
                 if (holder.Held == WeaponDef.LongShot) fireTimer += 1.5f; // snipers take their time
             }
 
@@ -313,7 +314,10 @@ namespace KnockbackRumble
                 if (holder.CanThrow && target != null && Random.value < 0.35f + 0.3f * skill)
                 {
                     float d = Vector3.Distance(transform.position, target.transform.position);
-                    bool use = holder.Gadget == Gadget.StickyMine ? d < 7f : d > 5f && d < 15f;
+                    var gd = holder.Gadget;
+                    bool use = gd == Gadget.StickyMine || gd == Gadget.BananaPeel || gd == Gadget.BouncePad ? d < 7f
+                             : gd == Gadget.AirHorn ? d < 5f
+                             : d > 5f && d < 15f;
                     if (use)
                     {
                         holder.TryGadget((target.Center - holder.FirePoint).normalized);

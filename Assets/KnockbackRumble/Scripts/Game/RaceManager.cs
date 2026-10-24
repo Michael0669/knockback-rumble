@@ -312,7 +312,7 @@ namespace KnockbackRumble
 
             if (State == Phase.Racing)
             {
-                // Payout Streaks are counted by whoever owns the attacker.
+                // Kill Streaks are counted by whoever owns the attacker.
                 if (knockoff && attacker.IsLocal && (Mini == null || Mini.StreaksAllowed))
                 {
                     var earned = attacker.AddStreakKnockoff();
@@ -406,7 +406,7 @@ namespace KnockbackRumble
             }
         }
 
-        // ---------- Payout Streaks ----------
+        // ---------- Kill Streaks ----------
 
         /// <summary>Someone called in a streak (runs on every machine).</summary>
         public void StreakCalled(Contestant caller, Streak streak)

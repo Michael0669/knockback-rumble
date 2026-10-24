@@ -60,6 +60,11 @@ namespace KnockbackRumble
             if (attacker != null && attacker != gameObject)
             {
                 var shooter = attacker.GetComponent<Contestant>();
+                // Heavy Hitter perk: +15% knockback on hits our own dummies deal.
+                // (Hits from other machines arrive already boosted, so only boost local shooters.)
+                var shooterBody = attacker.GetComponent<DentBody>();
+                if (shooter != null && shooterBody != null && shooterBody.IsLocal && shooter.Loadout != null && shooter.Loadout.Has(Perk.HeavyHitter))
+                    baseKnock *= 1.15f;
                 if (shooter != null && shooter.IsPlayer)
                 {
                     Sfx.Ui("hitmarker");
@@ -97,6 +102,8 @@ namespace KnockbackRumble
             float knock = baseKnock * mult * KnockTakenMultiplier;
             // Your own blasts never stun you, so rocket jumps stay controllable.
             float stun = self ? 0f : Mathf.Clamp(knock * 0.05f, 0.2f, 1.8f) * StunMultiplier;
+            var wd = weapon != null ? WeaponDef.ByName(weapon) : null;
+            if (!self && wd != null && wd.stunOverride >= 0f) stun = wd.stunOverride * StunMultiplier;
             Motor.Launch(dir * knock, stun);
 
             if (!self)

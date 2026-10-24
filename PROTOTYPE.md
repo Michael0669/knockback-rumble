@@ -17,8 +17,8 @@ There are **18 games**: the three classic events below, plus 15 mini-games (see 
 In every event: **knock someone off = +$100**, **fall off = -$50**, and every hit you take from a player pays you
 a little "pain pay".
 
-After a show you keep your cash in your **wallet** (for cosmetics later) and earn **XP**. Levels unlock more
-loadout items.
+After a tournament your cash goes into your **wallet**. There are no levels: you spend wallet cash to unlock
+guns, gadgets, perks, kill streaks and characters, in any order you like. Stronger stuff costs more.
 
 ## Run it in the editor
 
@@ -47,10 +47,10 @@ for 10 seconds (first event) or 8 seconds (later ones), then the 5-second countd
 - **HOST A GAME**: makes a friends-only Steam lobby. Invite friends from there.
 - **Join a friend**: accept their Steam invite, or right-click them in your Steam friends list → **Join Game**.
 - **TESTING TOOLS → HOST DIRECT / JOIN DIRECT**: connect by IP address, for testing without Steam.
-- **TESTING TOOLS → PROGRESS**: +$10,000 wallet cash, +1 level, MAX LEVEL (unlocks every weapon, perk and streak),
-  and RESET PROFILE (click twice) to go back to a brand-new player. Take these out before release.
+- **TESTING TOOLS → PROGRESS**: +$10,000 wallet cash, UNLOCK EVERYTHING (owns every gun, gadget, perk, streak and
+  character for free), and RESET PROFILE (click twice) to go back to a brand-new player. Take these out before release.
 
-Your level, XP and wallet show at the bottom right of the main menu.
+Your wallet and the loadout you're using show on the LOADOUT button.
 
 ## Tournaments
 
@@ -87,6 +87,18 @@ rebuild in the editor. Each one lives in `Scripts/MiniGames/`, one file per game
 | **Red Light, Green Light** | Run while Lord Dookington's back is turned | Move on red and you get zapped back. Race payouts. |
 | **Balloon Pop** | Pop balloons in a bounce house; trampolines reach the high ones | $15 per balloon, $60 gold. |
 | **Treadmill of Doom** | Keep running on a speeding treadmill, jump/dodge the junk | One life (the grinder at the back). |
+| **Bottomless Clip** | Your own loadout gun with unlimited ammo, on a plus-shaped rooftop | +$100 extra per knock-off. Streaks allowed. |
+| **Shotgun Wedding** | Unlimited Boom Sticks on top of a giant wedding cake | One life. +$50 extra per knock-off. |
+| **Gone With The Wind** | Unlimited Leaf Blowers on a rooftop; big gusts every 11 s (watch the wind sock) | One life. |
+| **Duck Season** | Unlimited Long Shot snipers on nine tall pillars | +$150 extra per knock-off. Hop pillars to dodge. |
+| **Moon Base** | Low gravity, bounce pads and unlimited Spray-n-Prays | +$75 extra per knock-off. |
+| **Pinball Wizard** | You're the ball: bumpers fling you, flippers swat you, targets at the top pay | $25 per target touch. Drain = -$50. Shoves only. |
+| **Color Crazy** | A color is called; get on a tile of that color before the rest drop | One life. Faster every round. Shoves only. |
+| **Wheel of Misfortune** | A giant wheel changes the rules every 15 s (rockets, leaf blowers, moon gravity, grease, shoves only, double cash...) | +$50 extra per knock-off. Unlimited ammo. |
+| **Sky High** | Race up a staircase of floating platforms into the clouds | Race payouts. Guns allowed. Checkpoints. |
+| **Minefield** | Race across a field packed with mines (they re-arm after 2.5 s) | Race payouts. Shoves only. |
+| **Bouncy Castle** | You bounce every time you land; unlimited Pop Pistols; the castle deflates | One life. |
+| **Swirly** | A flushing toilet bowl drags you round and into the growing drain | One life. Shoves only. |
 
 Games with "one life" pay $5-6 a second while you're in, plus survivor bonuses at the end, like Crumble Plaza.
 Knock-offs (+$100) and falls (-$50) count in every game.
@@ -111,7 +123,8 @@ Models live in `Assets/ThirdParty/Resources/` (Characters, Guns, Environment, Ve
 
 - **Characters:** one rigged file with 12 people and their animations (idle, run, shoot, punch, hit, wave).
   `Scripts/Core/ModelCharacter.cs` shows one person's parts, scales them to dummy size and plays the animations.
-- **Guns:** pistol (Pop Pistol), shotgun (Boom Stick) and sniper rifle (Long Shot). `Scripts/Weapons/GunModels.cs`
+- **Guns:** pistol (Pop Pistol), shotgun (Boom Stick), sniper rifle (Long Shot), rifle (Bonk Rifle), P90
+  (Spray-n-Pray) and revolver (Hand Cannon). The Leaf Blower and The Big Flush are built-in models. `Scripts/Weapons/GunModels.cs`
   measures each model the first time and fits it into the hand. The rocket launcher has no model in the pack,
   so it keeps the built-in one.
 - **Props and vehicles:** barrels, cones, tires, shipping containers, couches, wrecked cars, junk, a water tower
@@ -124,17 +137,35 @@ in `Scripts/Util/Art.cs`. The whole game as it was before the downloaded art is 
 **After pulling:** run **Knockback Rumble → Build Show Scene** once, so the Gauntlet, Cash Grab and Crumble
 Plaza pick up the new props (the mini-games and characters don't need it).
 
-## Loadouts
+## Loadouts and unlocks
 
-| Slot | Options (unlock level) |
+**LOADOUT** has 5 saved loadouts (tabs along the top). The one you click is the one you play with ("IN USE").
+Rename it in the NAME box, then set its 6 slots. Anything with a price tag is locked: click it once ("CLICK TO
+BUY"), then again to buy it with wallet cash and equip it. Gold price = you can afford it, red = you can't yet.
+Buying something unlocks it for all 5 loadouts. The end-of-tournament screen shows the next thing you can buy.
+
+| Slot | Options (price, free = starter) |
 | --- | --- |
-| Primary | Pop Pistol (1), Boom Stick shotgun (1), Rocket Launcher (3), Long Shot sniper, 3 shots, scope (5) |
-| Gadget | Bouncer Grenade (1), Sticky Mine (2). 2 per event |
-| Perks (pick 2) | Steel Toes (1), Grease Monkey (1), Double Jump (2), Deep Pockets (3), Lightweight (4), Scavenger (4) |
-| Payout Streaks (pick 2) | Gary Strike: 3 knock-offs in a row (1), Wrecking Ball on the cash leader: 5 in a row (3) |
+| Primary | Pop Pistol (free), Bonk Rifle $1,500, Leaf Blower $2,000, Spray-n-Pray $2,500, Boom Stick $3,000, Hand Cannon $3,500, Long Shot $5,000, Rocket Launcher $6,000, The Big Flush $8,000 |
+| Gadget | Bouncer Grenade (free), Sticky Mine $1,000, Banana Peel $1,200, Stink Bomb $1,500, Bounce Pad $2,000, Air Horn $2,500 |
+| Perks (pick 2) | Steel Toes, Grease Monkey (free), Scavenger $1,000, Springs $1,000, Bandolier $1,200, Double Jump $1,500, Lightweight $1,500, Hazard Pay $1,500, Deep Pockets $2,000, Quick Hands $2,000, Bounty Hunter $2,500, Heavy Hitter $3,000 |
+| Kill Streaks (pick 2) | Moon Boots 2 KOs $1,000, Carpet Bomb 2 KOs $1,500, Gary Strike 3 KOs (free), Anvil Drop 4 KOs $3,000, Wrecking Ball 5 KOs $2,500, Tactical Toilet 7 KOs $6,000 |
+
+**New guns:** Bonk Rifle (steady mid-range pushes), Spray-n-Pray (30-round bullet hose, wobbly aim), Hand Cannon
+(6 huge slugs), Leaf Blower (hold to push people; barely hurts, barely stuns), The Big Flush (fires a whole toilet:
+slow, enormous splash).
+**New gadgets:** Banana Peel (step on it and you slip straight up), Stink Bomb (big soft blast that piles on %),
+Bounce Pad (a trampoline anyone can use), Air Horn (blasts everyone near you away, never you).
+**New perks:** Bandolier (+50% ammo), Quick Hands (shoot 20% faster), Heavy Hitter (your hits knock 15% harder),
+Bounty Hunter (+$50 per knock-off), Hazard Pay (double pain pay), Springs (jump 20% higher).
+**New streaks:** Moon Boots (low gravity for 12 s), Carpet Bomb (a line of bombs ahead of you), Anvil Drop (anvils
+on the two closest rivals), Tactical Toilet (a giant toilet on every rival).
 
 Streaks count knock-offs since your last fall. Ammo crates refill your primary (and your gadget with Scavenger).
-New items go in `Scripts/Loadout/Loadouts.cs` (perks, gadgets, streaks) and `Scripts/Weapons/WeaponDef.cs` (guns).
+Prices live next to each item: `Scripts/Loadout/Loadouts.cs` (perks, gadgets, streaks), `Scripts/Weapons/WeaponDef.cs`
+(guns) and `Scripts/Cosmetics/Characters.cs` (characters).
+
+**Characters** also cost cash now (two are free). Click a locked one to preview it, then **BUY**.
 
 ## Controls
 
@@ -147,7 +178,7 @@ New items go in `Scripts/Loadout/Loadouts.cs` (perks, gadgets, streaks) and `Scr
 | Aim / scope (zoom) | Hold right mouse | Hold left trigger |
 | Shove | E or F | X or RB |
 | Throw gadget | G | LB |
-| Call in a Payout Streak | Q | Y |
+| Call in a Kill Streak | Q | Y |
 | Pause menu (loadout, leave game, back to lobby) | Esc | Back / Select |
 | Full standings (hold) | Tab | |
 | Spectating: switch player | Left / right click, A / D | LB / RB |
@@ -213,7 +244,7 @@ app, and it's expected.
   second. The host runs the bots, owns the crates and bags, pays out cash, and decides results. When you hit someone,
   your PC tells their PC, and their PC launches them. Gadgets and streaks are simulated by whoever threw them;
   everyone else sees a look-alike. Everything goes through Steam's relay, so there's no port forwarding.
-- **Profile** (level, XP, wallet, loadout) is saved on this PC for now. Steam Cloud / Steam Inventory later.
+- **Profile** (wallet, everything you've bought, 5 loadouts) is saved on this PC for now. Steam Cloud / Steam Inventory later.
 
 ## Files
 
@@ -228,10 +259,10 @@ Assets/KnockbackRumble/
   Scripts/MiniGames/ MiniGame (base class + the MiniGames list), MiniKit (arena building blocks), CollectGame (shared by
                      Make It Rain and Balloon Pop), and one file per mini-game
   Scripts/Player/    PlayerInputDriver, ThirdPersonCamera (with aim zoom)
-  Scripts/Loadout/   Loadouts (perks, gadgets, streaks, unlock levels) and Profile (level, XP, wallet)
+  Scripts/Loadout/   Loadouts (perks, gadgets, streaks, prices), Profile (wallet, unlocks, 5 loadouts), Shop
   Scripts/Weapons/   WeaponModels (gun, rocket, bomb, spike ball models), Puffs (low-poly smoke/fire/sparks/confetti),
                      WeaponDef (gun balance), WeaponHolder, Weapons, Rocket, WeaponPickup (ammo crates), Fx,
-                     Gadgets (+ Grenade, StickyMine), FallingBomb + FlyBy (Payout Streaks)
+                     Gadgets (+ Grenade, StickyMine), FallingBomb + FlyBy (Kill Streaks)
   Scripts/AI/        BotBrain
   Scripts/Game/      WorldLook (sun, sky, fog, bloom/color grading), Tournament (the host's game picks), ShowManager (tournament flow, cash, bags), MoneyBag, RaceManager (runs one event), CourseInfo,
                      HUD, MenuUI + UiSkin (menus, loadout screen), Announcer (all the jokes), Personas (voice packs), PrototypeBootstrap

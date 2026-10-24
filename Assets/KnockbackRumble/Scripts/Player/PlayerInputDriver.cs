@@ -8,7 +8,7 @@ namespace KnockbackRumble
     ///   Move: WASD / left stick           Jump: Space / A (twice with Double Jump)
     ///   Dive: Left Ctrl or C / B           Aim (zoom): hold right mouse / LT
     ///   Fire: left mouse / RT              Shove: E or F / X or RB
-    ///   Gadget: G / LB                     Payout Streak: Q / Y
+    ///   Gadget: G / LB                     Kill Streak: Q / Y
     ///   Esc (or Back/Select) opens the pause menu.
     /// </summary>
     public class PlayerInputDriver : MonoBehaviour
@@ -125,7 +125,7 @@ namespace KnockbackRumble
             bool gadget = (kb != null && kb.gKey.wasPressedThisFrame) || (pad != null && pad.leftShoulder.wasPressedThisFrame);
             if (gadget && weapons.TryGadget(AimDirection())) faceAimUntil = Time.time + FaceAimTime;
 
-            // Payout Streak
+            // Kill Streak
             bool streak = (kb != null && kb.qKey.wasPressedThisFrame) || (pad != null && pad.buttonNorth.wasPressedThisFrame);
             if (streak && !me.CallReadyStreak() && me.ReadyStreaks.Count == 0)
             {

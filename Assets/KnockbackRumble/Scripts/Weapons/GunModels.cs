@@ -36,11 +36,16 @@ namespace KnockbackRumble
             if (def == WeaponDef.PopPistol) return "Guns/Pistol";
             if (def == WeaponDef.BoomStick) return "Guns/Shotgun";
             if (def == WeaponDef.LongShot) return "Guns/SniperRifle";
+            if (def == WeaponDef.BonkRifle) return "Guns/Rifle";
+            if (def == WeaponDef.SprayNPray) return "Guns/P90";
+            if (def == WeaponDef.HandCannon) return "Guns/Revolver";
             return null;
         }
 
         /// <summary>Overall length in meters, next to a 1.85 m character.</summary>
-        static float LengthFor(WeaponDef def) => def == WeaponDef.LongShot ? 1.05f : def == WeaponDef.BoomStick ? 0.85f : 0.32f;
+        static float LengthFor(WeaponDef def) =>
+            def == WeaponDef.LongShot ? 1.05f : def == WeaponDef.BoomStick ? 0.85f : def == WeaponDef.BonkRifle ? 0.85f
+          : def == WeaponDef.SprayNPray ? 0.55f : def == WeaponDef.HandCannon ? 0.38f : 0.32f;
 
         /// <summary>The gun in the hand. muzzle = barrel tip in parent space (null for the built-in models).</summary>
         public static GameObject Build(WeaponDef def, Transform parent, out Vector3? muzzle)

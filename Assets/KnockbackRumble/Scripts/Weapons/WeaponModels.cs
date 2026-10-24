@@ -24,6 +24,10 @@ namespace KnockbackRumble
             else if (def == WeaponDef.BoomStick) Shotgun(root, def);
             else if (def == WeaponDef.RocketLauncher) Launcher(root, def);
             else if (def == WeaponDef.LongShot) Sniper(root, def);
+            else if (def == WeaponDef.LeafBlower) Blower(root, def);
+            else if (def == WeaponDef.BigFlush) FlushCannon(root, def);
+            else if (def == WeaponDef.BonkRifle || def == WeaponDef.SprayNPray) Rifle(root, def, def == WeaponDef.SprayNPray);
+            else if (def == WeaponDef.HandCannon) Pistol(root, def);
             else Box(root, "Body", new Vector3(0f, 0f, 0.2f), new Vector3(0.14f, 0.14f, 0.5f), M("Weapon_" + def.id, def.color));
             return root.gameObject;
         }
@@ -92,6 +96,45 @@ namespace KnockbackRumble
             Box(r, "BipodR", new Vector3(0.03f, -0.02f, 0.62f), new Vector3(0.02f, 0.02f, 0.28f), Steel);
         }
 
+        /// <summary>Leaf Blower: a fat orange motor box with a long nozzle.</summary>
+        static void Blower(Transform r, WeaponDef def)
+        {
+            var body = M("Weapon_" + def.id, def.color);
+            Box(r, "Motor", new Vector3(0f, 0.02f, -0.1f), new Vector3(0.24f, 0.26f, 0.3f), body);
+            Box(r, "Handle", new Vector3(0f, 0.2f, -0.1f), new Vector3(0.05f, 0.05f, 0.26f), Dark);
+            Tube(r, "Fan", new Vector3(0.13f, 0.02f, -0.1f), 0.22f, 0.04f, Dark);
+            Tube(r, "Nozzle", new Vector3(0f, -0.02f, 0.35f), 0.12f, 0.62f, Dark);
+            Tube(r, "Mouth", new Vector3(0f, -0.02f, 0.68f), 0.17f, 0.06f, Orange);
+            Box(r, "Grip", new Vector3(0f, -0.1f, -0.06f), new Vector3(0.07f, 0.14f, 0.08f), Dark, new Vector3(15f, 0f, 0f));
+        }
+
+        /// <summary>The Big Flush: a porcelain launcher with a plunger stuck on top.</summary>
+        static void FlushCannon(Transform r, WeaponDef def)
+        {
+            var white = M("Porcelain", new Color(0.93f, 0.94f, 0.95f));
+            Tube(r, "Tube", new Vector3(0f, 0.12f, 0.15f), 0.3f, 1.0f, white);
+            Tube(r, "Rim", new Vector3(0f, 0.12f, 0.66f), 0.36f, 0.08f, white);
+            Tube(r, "Hole", new Vector3(0f, 0.12f, 0.69f), 0.24f, 0.02f, M("Toilet_Water", new Color(0.35f, 0.6f, 0.9f)));
+            Box(r, "Tank", new Vector3(0f, 0.12f, -0.42f), new Vector3(0.34f, 0.3f, 0.18f), white);
+            Box(r, "Lever", new Vector3(0.18f, 0.22f, -0.38f), new Vector3(0.06f, 0.02f, 0.02f), Steel);
+            LowPoly.Make(LowPoly.Cylinder(8), "PlungerStick", r, new Vector3(0f, 0.38f, 0.1f), new Vector3(0.04f, 0.32f, 0.04f), Wood);
+            LowPoly.Make(LowPoly.Cone(8), "PlungerCup", r, new Vector3(0f, 0.3f, 0.1f), new Vector3(0.14f, 0.1f, 0.14f),
+                M("Plunger_Red", new Color(0.8f, 0.15f, 0.15f)), new Vector3(180f, 0f, 0f));
+            Box(r, "Grip", new Vector3(0f, -0.06f, 0.0f), new Vector3(0.07f, 0.16f, 0.09f), Dark, new Vector3(10f, 0f, 0f));
+        }
+
+        /// <summary>Bonk Rifle / Spray-n-Pray fallback: a short carbine (the SMG gets a drum magazine).</summary>
+        static void Rifle(Transform r, WeaponDef def, bool smg)
+        {
+            var body = M("Weapon_" + def.id, def.color);
+            Box(r, "Stock", new Vector3(0f, -0.03f, -0.24f), new Vector3(0.08f, 0.13f, 0.26f), Dark);
+            Box(r, "Grip", new Vector3(0f, -0.09f, -0.04f), new Vector3(0.07f, 0.14f, 0.08f), Dark, new Vector3(18f, 0f, 0f));
+            Box(r, "Body", new Vector3(0f, 0.02f, 0.1f), new Vector3(0.11f, 0.13f, 0.42f), body);
+            Tube(r, "Barrel", new Vector3(0f, 0.04f, 0.42f), 0.05f, 0.3f, Dark);
+            if (smg) Tube(r, "Drum", new Vector3(0f, -0.1f, 0.12f), 0.2f, 0.08f, Dark);
+            else Box(r, "Mag", new Vector3(0f, -0.12f, 0.12f), new Vector3(0.06f, 0.16f, 0.08f), Dark, new Vector3(-10f, 0f, 0f));
+        }
+
         // ---------- Gadgets and projectiles ----------
 
         /// <summary>A cartoon bomb: round black body, a cap, and a fuse (the grenade).</summary>
@@ -158,6 +201,72 @@ namespace KnockbackRumble
             }
             LowPoly.Make(LowPoly.Torus(16, 4, 0.12f), "Band", parent, Vector3.zero, new Vector3(1.04f, 1.3f, 1.04f),
                 M("Hazard_Stripe", Palette.Stripe));
+        }
+
+        /// <summary>A whole toilet (The Big Flush shot, the Tactical Toilet streak). About 1 m tall, front along +Z.</summary>
+        public static void Toilet(Transform parent)
+        {
+            var white = M("Porcelain", new Color(0.93f, 0.94f, 0.95f));
+            LowPoly.Make(LowPoly.Cylinder(10), "Base", parent, new Vector3(0f, 0.2f, 0.05f), new Vector3(0.38f, 0.4f, 0.45f), white);
+            LowPoly.Make(LowPoly.Cylinder(12), "Bowl", parent, new Vector3(0f, 0.48f, 0.12f), new Vector3(0.62f, 0.2f, 0.75f), white);
+            LowPoly.Make(LowPoly.Cylinder(12), "Water", parent, new Vector3(0f, 0.585f, 0.12f), new Vector3(0.46f, 0.02f, 0.56f),
+                M("Toilet_Water", new Color(0.35f, 0.6f, 0.9f)));
+            LowPoly.Make(LowPoly.Torus(14, 4, 0.18f), "Seat", parent, new Vector3(0f, 0.6f, 0.12f), new Vector3(0.64f, 0.5f, 0.78f), white);
+            Shapes.Make(PrimitiveType.Cube, "Tank", parent, new Vector3(0f, 0.85f, -0.3f), new Vector3(0.62f, 0.55f, 0.24f), white, false);
+            Shapes.Make(PrimitiveType.Cube, "Lid", parent, new Vector3(0f, 1.14f, -0.3f), new Vector3(0.66f, 0.05f, 0.28f), white, false);
+            Shapes.Make(PrimitiveType.Cube, "Handle", parent, new Vector3(0.26f, 1.0f, -0.17f), new Vector3(0.1f, 0.03f, 0.03f), Steel, false);
+        }
+
+        /// <summary>A cartoon anvil (Anvil Drop). About 1 m long, 0.7 m tall.</summary>
+        public static void Anvil(Transform parent)
+        {
+            var iron = M("Anvil_Iron", new Color(0.2f, 0.21f, 0.24f));
+            Shapes.Make(PrimitiveType.Cube, "Foot", parent, new Vector3(0f, 0.1f, 0f), new Vector3(0.6f, 0.2f, 0.5f), iron, false);
+            Shapes.Make(PrimitiveType.Cube, "Waist", parent, new Vector3(0f, 0.33f, 0f), new Vector3(0.32f, 0.3f, 0.3f), iron, false);
+            Shapes.Make(PrimitiveType.Cube, "Face", parent, new Vector3(-0.05f, 0.58f, 0f), new Vector3(0.82f, 0.22f, 0.42f), iron, false);
+            var horn = LowPoly.Make(LowPoly.Cone(8), "Horn", parent, new Vector3(0.55f, 0.6f, 0f), new Vector3(0.26f, 0.38f, 0.26f), iron);
+            horn.transform.localRotation = Quaternion.Euler(0f, 0f, -90f);
+        }
+
+        /// <summary>A banana peel lying flat (Banana Peel gadget).</summary>
+        public static void BananaPeel(Transform parent)
+        {
+            var yellow = M("Banana", new Color(1f, 0.86f, 0.2f));
+            var inner = M("Banana_In", new Color(1f, 0.95f, 0.7f));
+            LowPoly.Make(LowPoly.Ico(1), "Middle", parent, new Vector3(0f, 0.08f, 0f), new Vector3(0.25f, 0.16f, 0.25f), inner);
+            for (int i = 0; i < 4; i++)
+            {
+                var flap = LowPoly.Make(LowPoly.Ico(1), "Flap", parent, Vector3.zero, new Vector3(0.14f, 0.05f, 0.5f), yellow);
+                flap.transform.localRotation = Quaternion.Euler(0f, i * 90f + 20f, 0f);
+                flap.transform.localPosition = flap.transform.localRotation * new Vector3(0f, 0.03f, 0.26f);
+            }
+            Shapes.Make(PrimitiveType.Cube, "Stem", parent, new Vector3(0f, 0.2f, 0f), new Vector3(0.05f, 0.1f, 0.05f),
+                M("Banana_Stem", new Color(0.35f, 0.25f, 0.1f)), false);
+        }
+
+        /// <summary>A bounce pad: a bright trampoline disc with a coil (Bounce Pad gadget). 1.6 m across.</summary>
+        public static void BouncePad(Transform parent)
+        {
+            LowPoly.Make(LowPoly.Cylinder(14), "Frame", parent, new Vector3(0f, 0.1f, 0f), new Vector3(1.6f, 0.2f, 1.6f), Dark);
+            LowPoly.Make(LowPoly.Cylinder(14), "Mat", parent, new Vector3(0f, 0.21f, 0f), new Vector3(1.35f, 0.03f, 1.35f),
+                M("Pad_Pink", new Color(1f, 0.35f, 0.7f)));
+            LowPoly.Make(LowPoly.Torus(16, 4, 0.12f), "Rim", parent, new Vector3(0f, 0.2f, 0f), new Vector3(1.6f, 0.8f, 1.6f),
+                M("Hazard_Stripe", Palette.Stripe));
+        }
+
+        /// <summary>A stink bomb: a brown paper bag with green fumes (Stink Bomb gadget). Unit size.</summary>
+        public static Transform StinkBomb(Transform parent)
+        {
+            var root = new GameObject("StinkModel").transform;
+            root.SetParent(parent, false);
+            Shapes.Make(PrimitiveType.Cube, "Bag", root, new Vector3(0f, 0f, 0f), new Vector3(0.7f, 0.8f, 0.5f),
+                M("Paper_Bag", new Color(0.62f, 0.45f, 0.28f)), false);
+            Shapes.Make(PrimitiveType.Cube, "Fold", root, new Vector3(0f, 0.45f, 0f), new Vector3(0.72f, 0.12f, 0.52f),
+                M("Paper_Bag_Dark", new Color(0.5f, 0.36f, 0.22f)), false);
+            var spark = new GameObject("Fumes").transform;
+            spark.SetParent(root, false);
+            spark.localPosition = new Vector3(0f, 0.6f, 0f);
+            return spark;
         }
 
         // ---------- Helpers ----------

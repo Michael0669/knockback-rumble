@@ -2,10 +2,15 @@ using UnityEngine;
 
 namespace KnockbackRumble
 {
-    /// <summary>Sticky Mine: sits on the floor, arms after a second, launches whoever walks near it.</summary>
+    /// <summary>
+    /// Sticky Mine: sits on the floor, arms after a second, launches whoever walks near it.
+    /// Banana Peel: same idea, but you have to step right on it, and it slips you straight up.
+    /// </summary>
     public class StickyMine : MonoBehaviour
     {
         const float Lifetime = 90f;
+
+        public bool Banana { get; private set; }
 
         GameObject owner;
         ushort id;
@@ -15,10 +20,22 @@ namespace KnockbackRumble
         Material off, on;
         bool wasArmed;
 
-        public static void Spawn(Contestant c, ushort id, Vector3 pos, bool cosmetic)
+        public static void Spawn(Contestant c, ushort id, Vector3 pos, bool cosmetic, bool banana = false)
         {
-            var go = new GameObject("StickyMine");
+            var go = new GameObject(banana ? "BananaPeel" : "StickyMine");
             go.transform.position = pos;
+            if (banana)
+            {
+                go.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+                WeaponModels.BananaPeel(go.transform);
+                var b = go.AddComponent<StickyMine>();
+                b.owner = c.gameObject;
+                b.id = id;
+                b.cosmetic = cosmetic;
+                b.Banana = true;
+                Gadgets.Register(id, go);
+                return;
+            }
             // A squat landmine: dark disc, yellow/black rim, little spikes, and a blinking dome on top.
             var dark = Mats.Get("Gun_Dark", new Color(0.16f, 0.16f, 0.18f));
             LowPoly.Make(LowPoly.Cylinder(10), "Base", go.transform, new Vector3(0f, 0.08f, 0f), new Vector3(0.95f, 0.16f, 0.95f), dark);
@@ -43,11 +60,18 @@ namespace KnockbackRumble
             Gadgets.Register(id, go);
         }
 
+        /// <summary>Whoops!</summary>
+        public static void SlipFx(Vector3 pos)
+        {
+            Sfx.At("slip", pos, 1f, 0.1f, 40f);
+            Fx.Burst(pos + Vector3.up * 0.3f, new Color(1f, 0.86f, 0.2f), 14, 6f, 0.25f);
+        }
+
         void Update()
         {
             age += Time.deltaTime;
             bool armed = age >= Gadgets.MineArm;
-            if (armed && !wasArmed) Sfx.At("mine_arm", transform.position, 1f, 0f, 25f);
+            if (armed && !wasArmed && !Banana) Sfx.At("mine_arm", transform.position, 1f, 0f, 25f);
             wasArmed = armed;
             if (lamp != null) lamp.sharedMaterial = armed && Mathf.Repeat(age * 2f, 1f) < 0.5f ? on : off;
 
@@ -60,10 +84,19 @@ namespace KnockbackRumble
             if (!armed) return;
 
             Vector3 p = transform.position + Vector3.up * 0.6f;
+            float trigger = Banana ? Gadgets.BananaTrigger : Gadgets.MineTrigger;
             foreach (var body in DentBody.All)
             {
                 if (body == null || body.gameObject == owner) continue;
-                if ((body.Center - p).sqrMagnitude > Gadgets.MineTrigger * Gadgets.MineTrigger) continue;
+                if ((body.Center - p).sqrMagnitude > trigger * trigger) continue;
+                if (Banana)
+                {
+                    SlipFx(transform.position);
+                    Gadgets.Detonate(id, transform.position, Gadgets.BananaRadius, Gadgets.BananaKnock, Gadgets.BananaDent, owner, "Banana Peel",
+                        false, 0.95f);
+                    Destroy(gameObject);
+                    return;
+                }
                 Gadgets.Detonate(id, transform.position + Vector3.up * 0.3f, Gadgets.MineRadius, Gadgets.MineKnock, Gadgets.MineDent, owner, "Sticky Mine");
                 Destroy(gameObject);
                 return;

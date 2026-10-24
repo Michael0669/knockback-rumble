@@ -43,6 +43,10 @@ namespace KnockbackRumble
         public float SpeedMultiplier { get; set; } = 1f;
         /// <summary>Extra jumps allowed in mid-air (Double Jump perk = 1).</summary>
         public int ExtraJumps { get; set; }
+        /// <summary>Springs perk: higher jumps.</summary>
+        public float JumpMultiplier { get; set; } = 1f;
+        /// <summary>Moon Boots kill streak: floaty low gravity while this is in the future (Time.time).</summary>
+        public float MoonBootsUntil { get; set; } = -1f;
         int airJumpsLeft;
 
         public bool Grounded { get => IsRemote ? remoteGrounded : grounded; private set => grounded = value; }
@@ -180,6 +184,7 @@ namespace KnockbackRumble
 
             Vector3 v = rb.linearVelocity;
             float g = gravity * (v.y < 0f ? fallGravityMultiplier : 1f);
+            if (Time.time < MoonBootsUntil) g *= 0.35f;
             v.y -= g * dt;
 
             Vector3 h = new Vector3(v.x, 0f, v.z);
@@ -220,7 +225,7 @@ namespace KnockbackRumble
                 // Jump (with coyote time and input buffering)
                 if (jumpBuffer > 0f && !InputLocked && (Grounded || coyoteTimer > 0f))
                 {
-                    vy = jumpSpeed;
+                    vy = jumpSpeed * JumpMultiplier;
                     jumpBuffer = 0f;
                     coyoteTimer = 0f;
                     Grounded = false;
@@ -229,7 +234,7 @@ namespace KnockbackRumble
                 else if (jumpBuffer > 0f && !InputLocked && airJumpsLeft > 0)
                 {
                     // Double Jump perk
-                    vy = jumpSpeed * 0.9f;
+                    vy = jumpSpeed * 0.9f * JumpMultiplier;
                     jumpBuffer = 0f;
                     airJumpsLeft--;
                 }

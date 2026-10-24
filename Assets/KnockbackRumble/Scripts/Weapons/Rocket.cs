@@ -22,8 +22,17 @@ namespace KnockbackRumble
             go.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
             var model = new GameObject("Model").transform;
             model.SetParent(go.transform, false);
-            model.localScale = Vector3.one * 1.5f;
-            WeaponModels.Rocket(model, def.color);
+            bool toilet = def == WeaponDef.BigFlush;
+            model.localScale = Vector3.one * (toilet ? 1.3f : 1.5f);
+            if (toilet)
+            {
+                // Flying seat-first, tank at the back.
+                var turn = new GameObject("Toilet").transform;
+                turn.SetParent(model, false);
+                turn.localPosition = new Vector3(0f, -0.55f, 0f);
+                WeaponModels.Toilet(turn);
+            }
+            else WeaponModels.Rocket(model, def.color);
             var r = go.AddComponent<Rocket>();
             r.model = model;
             r.def = def;
@@ -44,7 +53,8 @@ namespace KnockbackRumble
 
             bool hitSomething = false;
             float best = float.MaxValue;
-            foreach (var hit in Physics.SphereCastAll(transform.position, 0.2f, dir, dist, ~0, QueryTriggerInteraction.Ignore))
+            float size = def == WeaponDef.BigFlush ? 0.6f : 0.2f;
+            foreach (var hit in Physics.SphereCastAll(transform.position, size, dir, dist, ~0, QueryTriggerInteraction.Ignore))
             {
                 var rb = hit.collider.attachedRigidbody;
                 if (rb != null && owner != null && rb.gameObject == owner) continue;
@@ -56,7 +66,7 @@ namespace KnockbackRumble
             transform.position += step;
 
             // Spin, flame and smoke trail
-            if (model != null) model.Rotate(0f, 0f, 540f * dt, Space.Self);
+            if (model != null) model.Rotate(0f, 0f, (def == WeaponDef.BigFlush ? 160f : 540f) * dt, Space.Self);
             Vector3 tail = transform.position - dir * 0.55f;
             Puffs.Fire(tail, -dir * 3f + Random.insideUnitSphere * 0.5f, Random.Range(0.18f, 0.3f), 0.07f);
             trailTimer -= dt;
@@ -70,6 +80,11 @@ namespace KnockbackRumble
 
         void Boom(Vector3 at)
         {
+            if (def == WeaponDef.BigFlush)
+            {
+                Sfx.At("flush", at, 1f, 0.05f, 80f);
+                Fx.Burst(at + Vector3.up * 0.5f, new Color(0.35f, 0.6f, 0.9f), 26, 9f, 0.3f);   // splash!
+            }
             if (cosmetic) Fx.Explosion(at, def.radius);
             else Weapons.Explode(at, def.radius, def.knockback, def.dent, owner, def.name, def.minLift);
             Destroy(gameObject);

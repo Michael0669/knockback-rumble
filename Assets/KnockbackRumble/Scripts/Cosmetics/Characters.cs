@@ -8,6 +8,8 @@ namespace KnockbackRumble
         public byte id;
         public string name;
         public string blurb;
+        /// <summary>Wallet cash to unlock (0 = free from the start).</summary>
+        public int price;
         /// <summary>The character's parts in Characters/Humans_Master (the downloaded pack).</summary>
         public string[] parts;
         /// <summary>The material that gets the player's color (their main piece of clothing).</summary>
@@ -31,29 +33,29 @@ namespace KnockbackRumble
 
         public static readonly CharacterDef[] All =
         {
-            new CharacterDef { id = 0, name = "Sgt. Kneecap", blurb = "SWAT. Thinks every door is a battering-ram opportunity.", parts = P("Swat"), tint = "Swat",
+            new CharacterDef { id = 0, price = 0, name = "Sgt. Kneecap", blurb = "SWAT. Thinks every door is a battering-ram opportunity.", parts = P("Swat"), tint = "Swat",
                 skin = 1, hairColor = 0, beard = 1, hairStyle = 0 },
-            new CharacterDef { id = 1, name = "Trailmix", blurb = "Adventurer. Has been lost since 2009.", parts = P("Adventurer"), tint = "Green",
+            new CharacterDef { id = 1, price = 0, name = "Trailmix", blurb = "Adventurer. Has been lost since 2009.", parts = P("Adventurer"), tint = "Green",
                 skin = 0, hairColor = 2, beard = 3, hairStyle = 2 },
-            new CharacterDef { id = 2, name = "Old McBonk", blurb = "Farmer. Smells like a barn. Proud of it.", parts = P("Farmer", "Pants"), tint = "LightBlue",
+            new CharacterDef { id = 2, price = 500, name = "Old McBonk", blurb = "Farmer. Smells like a barn. Proud of it.", parts = P("Farmer", "Pants"), tint = "LightBlue",
                 skin = 0, hairColor = 4, beard = 0, hairStyle = 2 },
-            new CharacterDef { id = 3, name = "Hard Hat Harry", blurb = "Construction worker. Union break every four minutes.", parts = P("Worker"), tint = "Worker_Vest",
+            new CharacterDef { id = 3, price = 750, name = "Hard Hat Harry", blurb = "Construction worker. Union break every four minutes.", parts = P("Worker"), tint = "Worker_Vest",
                 skin = 2, hairColor = 1, beard = 1, hairStyle = 0 },
-            new CharacterDef { id = 4, name = "Riot", blurb = "Punk. Allergic to rules and soap.", parts = P("Punk"), tint = "Red",
+            new CharacterDef { id = 4, price = 1000, name = "Riot", blurb = "Punk. Allergic to rules and soap.", parts = P("Punk"), tint = "Red",
                 skin = 3, hairColor = 3, beard = 2, hairStyle = 1 },
-            new CharacterDef { id = 5, name = "Cosmo", blurb = "Astronaut. Got lost on the way to space.", parts = P("SpaceSuit"), tint = "SciFi_Main",
+            new CharacterDef { id = 5, price = 1500, name = "Cosmo", blurb = "Astronaut. Got lost on the way to space.", parts = P("SpaceSuit"), tint = "SciFi_Main",
                 skin = 4, hairColor = 3, beard = 3, hairStyle = 0 },
-            new CharacterDef { id = 6, name = "His Royal Lowness", blurb = "King. Rules a kingdom of three porta-potties.", parts = P("King"), tint = "Blue",
+            new CharacterDef { id = 6, price = 2000, name = "His Royal Lowness", blurb = "King. Rules a kingdom of three porta-potties.", parts = P("King"), tint = "Blue",
                 skin = 0, hairColor = 4, beard = 0, hairStyle = 3 },
-            new CharacterDef { id = 7, name = "Beach Bod Brad", blurb = "Forgot his shirt. And his dignity.", parts = P("Beach"), tint = "Red_Dark",
+            new CharacterDef { id = 7, price = 1000, name = "Beach Bod Brad", blurb = "Forgot his shirt. And his dignity.", parts = P("Beach"), tint = "Red_Dark",
                 skin = 1, hairColor = 2, beard = 3, hairStyle = 0 },
-            new CharacterDef { id = 8, name = "Izzy Influencer", blurb = "Livestreaming her own elimination.", parts = P("Casual"), tint = "Purple",
+            new CharacterDef { id = 8, price = 1500, name = "Izzy Influencer", blurb = "Livestreaming her own elimination.", parts = P("Casual"), tint = "Purple",
                 skin = 2, hairColor = 1, beard = 3, hairStyle = 3 },
-            new CharacterDef { id = 9, name = "Dude", blurb = "Just here for the free snacks.", parts = P("Casual2"), tint = "LightBrown",
+            new CharacterDef { id = 9, price = 500, name = "Dude", blurb = "Just here for the free snacks.", parts = P("Casual2"), tint = "LightBrown",
                 skin = 3, hairColor = 0, beard = 2, hairStyle = 0 },
-            new CharacterDef { id = 10, name = "The Lawyer", blurb = "Will sue whoever shoves him first.", parts = P("Suit"), tint = "Suit",
+            new CharacterDef { id = 10, price = 3000, name = "The Lawyer", blurb = "Will sue whoever shoves him first.", parts = P("Suit"), tint = "Suit",
                 skin = 0, hairColor = 0, beard = 3, hairStyle = 0 },
-            new CharacterDef { id = 11, name = "Horse Guy", blurb = "Nobody knows why. Nobody asks.",
+            new CharacterDef { id = 11, price = 5000, name = "Horse Guy", blurb = "Nobody knows why. Nobody asks.",
                 parts = new[] { "Casual2_Feet", "Casual2_Legs", "Casual2_Body", "Horse_Head" }, tint = "LightBrown",
                 skin = 2, hairColor = 1, beard = 0, hairStyle = 3 },
         };

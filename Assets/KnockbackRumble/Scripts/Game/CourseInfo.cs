@@ -26,6 +26,18 @@ namespace KnockbackRumble
         RedLight = 15,
         BalloonPop = 16,
         Treadmill = 17,
+        BottomlessClip = 18,
+        ShotgunWedding = 19,
+        GoneWithTheWind = 20,
+        DuckSeason = 21,
+        MoonBase = 22,
+        Pinball = 23,
+        ColorCrazy = 24,
+        WheelOfMisfortune = 25,
+        SkyHigh = 26,
+        Minefield = 27,
+        BouncyCastle = 28,
+        Swirly = 29,
     }
 
     public static class Events
@@ -37,6 +49,9 @@ namespace KnockbackRumble
             EventKind.HotPotato, EventKind.ThroneRoom, EventKind.MakeItRain, EventKind.GreasedSumo, EventKind.SpinCycle,
             EventKind.FloorIsLava, EventKind.TurfWar, EventKind.RocketRodeo, EventKind.ToiletRoll, EventKind.HoleInTheWall,
             EventKind.PottyPanic, EventKind.BirdBrained, EventKind.RedLight, EventKind.BalloonPop, EventKind.Treadmill,
+            EventKind.BottomlessClip, EventKind.ShotgunWedding, EventKind.GoneWithTheWind, EventKind.DuckSeason, EventKind.MoonBase,
+            EventKind.Pinball, EventKind.ColorCrazy, EventKind.WheelOfMisfortune, EventKind.SkyHigh, EventKind.Minefield,
+            EventKind.BouncyCastle, EventKind.Swirly,
         };
 
         /// <summary>Short description for the tournament picker.</summary>

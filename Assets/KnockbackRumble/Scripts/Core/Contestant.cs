@@ -38,7 +38,7 @@ namespace KnockbackRumble
         public int Falls;
         public int Knockoffs;
 
-        // Loadout and Payout Streaks
+        // Loadout and Kill Streaks
         public Loadout Loadout = new Loadout();
         /// <summary>Knock-offs since this dummy last fell.</summary>
         public int StreakCount;
@@ -56,6 +56,8 @@ namespace KnockbackRumble
             Dent.StunMultiplier = Loadout.Has(Perk.GreaseMonkey) ? 0.6f : 1f;
             Motor.ExtraJumps = Loadout.Has(Perk.DoubleJump) ? 1 : 0;
             Motor.SpeedMultiplier = Loadout.Has(Perk.Lightweight) ? 1.12f : 1f;
+            Motor.JumpMultiplier = Loadout.Has(Perk.Springs) ? 1.2f : 1f;
+            Motor.MoonBootsUntil = -1f;
         }
 
         /// <summary>A knock-off counted toward this dummy's streak. Returns a newly earned streak, if any.</summary>

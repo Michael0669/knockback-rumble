@@ -173,7 +173,7 @@ namespace KnockbackRumble
             if (UiSkin.Button(new Rect(px + 40f, py + 266f, 292f, 88f), "PLAY OFFLINE", UiSkin.Dark,
                     "You vs " + match.OfflineBots + " bots", 32))
                 OpenTournament(true);
-            if (UiSkin.Button(new Rect(px + 348f, py + 266f, 292f, 88f), "LOADOUT", UiSkin.Teal, "Level " + Profile.Level, 32))
+            if (UiSkin.Button(new Rect(px + 348f, py + 266f, 292f, 88f), "LOADOUT", UiSkin.Teal, Profile.LoadoutName(Profile.ActiveLoadout) + "  -  " + HUD.Money(Profile.Wallet), 32))
                 OpenLoadout();
 
             var status = new Rect(px + 40f, py + 370f, 600f, 42f);
@@ -215,21 +215,16 @@ namespace KnockbackRumble
             // ---- Progress cheats (for testing unlocks, the shop, etc.) ----
             UiSkin.Heading(new Rect(tx + 30f, ty + 20f, 500f, 30f), "PROGRESS  (testing only)", 22, UiSkin.LabelBlue);
             UiSkin.Text(new Rect(tx + 30f, ty + 52f, 500f, 30f),
-                "Level " + Profile.Level + "   -   " + Profile.Xp + " / " + Profile.XpToNext + " XP   -   Wallet " + HUD.Money(Profile.Wallet),
+                "Wallet " + HUD.Money(Profile.Wallet) + "   -   " + Profile.ShowsPlayed + " tournaments, " + Profile.ShowsWon + " won",
                 UiSkin.BodyBold, 19, UiSkin.Cream, TextAnchor.MiddleLeft, false);
             if (UiSkin.Button(new Rect(tx + 30f, ty + 88f, 160f, 60f), "+$10,000", UiSkin.Green, null, 24))
             {
                 Profile.TestAddCash(10000);
                 Sfx.Ui("cash");
             }
-            if (UiSkin.Button(new Rect(tx + 200f, ty + 88f, 160f, 60f), "+1 LEVEL", UiSkin.Teal, null, 24))
+            if (UiSkin.Button(new Rect(tx + 200f, ty + 88f, 330f, 60f), "UNLOCK EVERYTHING", UiSkin.Teal, null, 24))
             {
-                Profile.TestLevelUp(false);
-                Sfx.Ui("streak_ready");
-            }
-            if (UiSkin.Button(new Rect(tx + 370f, ty + 88f, 160f, 60f), "MAX LEVEL", UiSkin.Teal, "unlock everything", 22))
-            {
-                Profile.TestLevelUp(true);
+                Profile.TestUnlockAll();
                 Sfx.Ui("fanfare");
             }
             bool armed = Now < resetArmedUntil;
@@ -605,37 +600,42 @@ namespace KnockbackRumble
         // Loadout and profile
         // =====================================================================
 
-        static readonly string[] SlotNames = { "PRIMARY", "GADGET", "PERK 1", "PERK 2", "PAYOUT STREAK 1", "PAYOUT STREAK 2" };
+        static readonly string[] SlotNames = { "PRIMARY", "GADGET", "PERK 1", "PERK 2", "KILL STREAK 1", "KILL STREAK 2" };
 
         struct Option
         {
             public byte id;
             public string name, desc;
-            public int level;
+            public int price;
+            public bool owned;
+            public ShopCategory category;
             public Color color;
         }
+
+        // Buying takes two clicks so nobody spends $8,000 by accident.
+        int buyArmedKey = -1;
+        float buyArmedUntil;
+        string loadoutNameField;
+        int loadoutNameSlot = -1;
 
         void OpenLoadout()
         {
             editing = Profile.Loadout.Copy();
+            loadoutNameSlot = -1;
+            buyArmedKey = -1;
             showLoadout = true;
             showVolumes = false;
             GUI.FocusControl(null);
         }
 
-        /// <summary>Level, XP bar and wallet.</summary>
+        /// <summary>The wallet (everything is bought with it).</summary>
         static void DrawProfileBar(Rect r)
         {
             UiSkin.Panel(r);
-            UiSkin.Heading(new Rect(r.x + 24f, r.y + 10f, 200f, 40f), "LEVEL " + Profile.Level, 32, UiSkin.Gold);
-            UiSkin.Heading(new Rect(r.x + r.width - 230f, r.y + 10f, 206f, 40f), "WALLET " + HUD.Money(Profile.Wallet), 26, UiSkin.Green,
-                TextAnchor.MiddleRight);
-            float fill = Profile.XpToNext > 0 ? Mathf.Clamp01((float)Profile.Xp / Profile.XpToNext) : 1f;
-            var bar = new Rect(r.x + 24f, r.y + 58f, r.width - 190f, 16f);
-            UiSkin.Pill(bar, UiSkin.PillDark);
-            if (fill > 0.02f) UiSkin.Pill(new Rect(bar.x, bar.y, Mathf.Max(16f, bar.width * fill), bar.height), UiSkin.Green);
-            UiSkin.Text(new Rect(bar.xMax + 10f, r.y + 50f, 150f, 32f), Profile.Xp + " / " + Profile.XpToNext + " XP", UiSkin.BodyBold, 18,
-                UiSkin.Muted, TextAnchor.MiddleRight, false);
+            UiSkin.Text(new Rect(r.x + 24f, r.y + 8f, r.width - 48f, 30f), "WALLET", UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
+            UiSkin.Heading(new Rect(r.x + 24f, r.y + 34f, r.width - 48f, 50f), HUD.Money(Profile.Wallet), 44, UiSkin.Green);
+            UiSkin.Text(new Rect(r.x + 24f, r.y + 34f, r.width - 48f, 50f), "Win cash in tournaments", UiSkin.BodyBold, 18, UiSkin.Muted,
+                TextAnchor.MiddleRight, false);
         }
 
         Option[] OptionsFor(int slot)
@@ -645,18 +645,20 @@ namespace KnockbackRumble
             {
                 foreach (var w in Loadouts.Primaries)
                 {
-                    string extra = "Ammo " + w.ammo + (w.zoomFov <= 30f ? "   -   Scope" : "");
-                    list.Add(new Option { id = w.netId, name = w.name, desc = w.description + "\n" + extra, level = w.unlockLevel, color = w.color });
+                    string extra = "  (" + w.ammo + " ammo" + (w.zoomFov <= 30f ? ", scope" : "") + ")";
+                    list.Add(new Option { id = w.netId, name = w.name, desc = w.description + extra, price = w.price, owned = Profile.Owns(w),
+                        category = ShopCategory.Weapon, color = w.color });
                 }
             }
             else
             {
                 var items = slot == 1 ? Loadouts.Gadgets : slot <= 3 ? Loadouts.Perks : Loadouts.Streaks;
-                if (slot == 5) list.Add(new Option { id = 0, name = "Empty", desc = "No second streak.", level = 1, color = UiSkin.Muted });
+                var cat = slot == 1 ? ShopCategory.Gadget : slot <= 3 ? ShopCategory.Perk : ShopCategory.Streak;
+                if (slot == 5) list.Add(new Option { id = 0, name = "Empty", desc = "No second kill streak.", owned = true, category = cat, color = UiSkin.Muted });
                 foreach (var i in items)
                 {
-                    string desc = i.description + (slot == 1 ? "\n" + i.cost + " per event (refill at crates with Scavenger)" : "");
-                    list.Add(new Option { id = i.id, name = i.name, desc = desc, level = i.unlockLevel, color = i.color });
+                    string desc = i.description + (slot == 1 ? "  (" + i.cost + " per game)" : "");
+                    list.Add(new Option { id = i.id, name = i.name, desc = desc, price = i.price, owned = Profile.Owns(cat, i), category = cat, color = i.color });
                 }
             }
             return list.ToArray();
@@ -701,72 +703,130 @@ namespace KnockbackRumble
             }
         }
 
+        /// <summary>Save the loadout being edited into the slot that's in use.</summary>
+        void SaveEditing()
+        {
+            int slot = Profile.ActiveLoadout;
+            Profile.SetLoadout(slot, editing);
+            editing = Profile.GetLoadout(slot).Copy();
+        }
+
         void DrawLoadout(float W, float H, float oy)
         {
             if (editing == null) editing = Profile.Loadout.Copy();
             UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.7f));
 
-            float cx = W / 2f, pw = 1460f, ph = 880f;
+            float cx = W / 2f, pw = 1460f, ph = 900f;
             var panel = new Rect(cx - pw / 2f, oy + (1080f - ph) / 2f, pw, ph);
             UiSkin.Panel(panel);
-            UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 26f, 400f, 60f), "LOADOUT", 52, UiSkin.Gold);
-            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 86f, 700f, 30f),
-                MatchController.Instance != null && MatchController.Instance.InMatch ? "Changes kick in at the start of the next event."
-                    : "Level up by playing shows to unlock more.", UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
-            DrawProfileBar(new Rect(panel.xMax - 520f, panel.y + 26f, 480f, 92f));
+            UiSkin.Heading(new Rect(panel.x + 44f, panel.y + 22f, 400f, 60f), "LOADOUT", 52, UiSkin.Gold);
+            UiSkin.Text(new Rect(panel.x + 46f, panel.y + 80f, 820f, 30f),
+                MatchController.Instance != null && MatchController.Instance.InMatch ? "Changes kick in at the start of the next game."
+                    : "Save up to 5 loadouts. The one you pick is the one you play with. Spend wallet cash to unlock more.",
+                UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
+            DrawProfileBar(new Rect(panel.xMax - 440f, panel.y + 22f, 400f, 96f));
 
-            // Slots
-            float sx = panel.x + 40f, sy = panel.y + 140f, sw = 400f, sh = 100f;
+            // ---- The 5 saved loadouts ----
+            int active = Profile.ActiveLoadout;
+            float tx = panel.x + 40f, ty = panel.y + 130f, tw = (pw - 80f - 4f * 12f) / 5f, th = 70f;
+            for (int i = 0; i < Loadouts.SlotCount; i++)
+            {
+                var r = new Rect(tx + i * (tw + 12f), ty, tw, th);
+                bool on = i == active;
+                if (UiSkin.Button(r, "", on ? UiSkin.Yellow : UiSkin.Dark, null, 10) && !on)
+                {
+                    SaveEditing();
+                    Profile.ActiveLoadout = i;
+                    editing = Profile.GetLoadout(i).Copy();
+                    loadoutNameSlot = -1;
+                    buyArmedKey = -1;
+                    GUI.FocusControl(null);
+                    Sfx.Ui("ui_equip");
+                }
+                Color ink = on ? UiSkin.Ink : UiSkin.Cream;
+                UiSkin.Text(new Rect(r.x + 18f, r.y + 6f, r.width - 36f, 34f), Profile.LoadoutName(i), UiSkin.Display, 26, ink, TextAnchor.MiddleLeft, !on);
+                var l = i == active ? editing : Profile.GetLoadout(i);
+                UiSkin.Text(new Rect(r.x + 18f, r.y + 36f, r.width - 36f, 26f), l.PrimaryDef.name.ToUpperInvariant(), UiSkin.BodyBold, 17,
+                    new Color(ink.r, ink.g, ink.b, 0.75f), TextAnchor.MiddleLeft, false);
+                if (on) UiSkin.Text(new Rect(r.x + 18f, r.y + 6f, r.width - 36f, 34f), "IN USE", UiSkin.BodyBold, 16, ink, TextAnchor.MiddleRight, false);
+            }
+
+            // ---- Slots of the loadout in use (with its name) ----
+            float sx = panel.x + 40f, sy = panel.y + 222f, sw = 400f, sh = 86f;
+            if (loadoutNameSlot != active) { loadoutNameSlot = active; loadoutNameField = Profile.LoadoutName(active); }
+            UiSkin.Text(new Rect(sx, sy, 80f, 50f), "NAME", UiSkin.BodyBold, 19, UiSkin.Muted, TextAnchor.MiddleLeft, false);
+            string typed = UiSkin.TextField(new Rect(sx + 76f, sy, sw - 76f, 50f), loadoutNameField, 16, "loadoutname");
+            if (typed != loadoutNameField)
+            {
+                loadoutNameField = typed;
+                Profile.SetLoadoutName(active, typed);
+            }
+            sy += 62f;
             for (int i = 0; i < SlotNames.Length; i++)
             {
-                var r = new Rect(sx, sy + i * (sh + 12f), sw, sh);
+                var r = new Rect(sx, sy + i * (sh + 10f), sw, sh);
                 bool sel = i == loadoutSlot;
-                if (UiSkin.Button(r, "", sel ? UiSkin.Yellow : UiSkin.Dark, null, 10)) loadoutSlot = i;
+                if (UiSkin.Button(r, "", sel ? UiSkin.Yellow : UiSkin.Dark, null, 10)) { loadoutSlot = i; buyArmedKey = -1; }
                 Color ink = sel ? UiSkin.Ink : UiSkin.Cream;
-                UiSkin.Text(new Rect(r.x + 26f, r.y + 12f, r.width - 40f, 30f), SlotNames[i], UiSkin.BodyBold, 19,
+                UiSkin.Text(new Rect(r.x + 26f, r.y + 8f, r.width - 40f, 28f), SlotNames[i], UiSkin.BodyBold, 18,
                     new Color(ink.r, ink.g, ink.b, 0.75f), TextAnchor.MiddleLeft, false);
-                UiSkin.Text(new Rect(r.x + 26f, r.y + 40f, r.width - 40f, 44f), EquippedName(editing, i).ToUpperInvariant(), UiSkin.Display, 32,
+                UiSkin.Text(new Rect(r.x + 26f, r.y + 34f, r.width - 40f, 42f), EquippedName(editing, i).ToUpperInvariant(), UiSkin.Display, 30,
                     ink, TextAnchor.MiddleLeft, !sel);
             }
 
-            // Options for the selected slot
+            // ---- Everything you can put in the selected slot ----
             var options = OptionsFor(loadoutSlot);
             byte current = Equipped(editing, loadoutSlot);
             byte other = loadoutSlot == 2 ? (byte)editing.perk2 : loadoutSlot == 3 ? (byte)editing.perk1
                        : loadoutSlot == 4 ? (byte)editing.streak2 : loadoutSlot == 5 ? (byte)editing.streak1 : (byte)255;
-            float ox = panel.x + 480f, oyy = panel.y + 140f, cw = 460f, chh = 150f, gap = 20f;
-            int level = Profile.Level;
+            float ox = panel.x + 470f, oyy = panel.y + 222f, gap = 12f;
+            float cw = (panel.xMax - 40f - ox - 2f * gap) / 3f, chh = 132f;
+            if (Now > buyArmedUntil) buyArmedKey = -1;
+            var desc = new GUIStyle { font = UiSkin.BodyBold, fontSize = 15, wordWrap = true, alignment = TextAnchor.UpperLeft };
             for (int i = 0; i < options.Length; i++)
             {
                 var o = options[i];
-                var r = new Rect(ox + (i % 2) * (cw + gap), oyy + (i / 2) * (chh + gap), cw, chh);
-                bool locked = o.level > level;
+                var r = new Rect(ox + (i % 3) * (cw + gap), oyy + (i / 3) * (chh + gap), cw, chh);
+                bool locked = !o.owned;
+                bool afford = Profile.Wallet >= o.price;
                 bool on = o.id == current;
+                int key = (int)o.category * 1000 + o.id;
+                bool armed = locked && buyArmedKey == key;
                 UiSkin.Card(r);
                 if (on) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(1f, 0.79f, 0.16f, 0.22f));
-                UiSkin.Fill(new Rect(r.x + 18f, r.y + 22f, 8f, r.height - 44f), locked ? UiSkin.Muted : o.color);
-                UiSkin.Heading(new Rect(r.x + 42f, r.y + 14f, r.width - 200f, 44f), o.name.ToUpperInvariant(), 30,
+                if (armed) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(0.18f, 0.8f, 0.44f, 0.25f));
+                UiSkin.Fill(new Rect(r.x + 14f, r.y + 16f, 6f, r.height - 32f), locked ? UiSkin.Muted : o.color);
+                UiSkin.Heading(new Rect(r.x + 32f, r.y + 8f, r.width - 44f, 36f), o.name.ToUpperInvariant(), 24,
                     locked ? UiSkin.Muted : UiSkin.Cream);
-                var desc = new GUIStyle { font = UiSkin.BodyBold, fontSize = 19, wordWrap = true, alignment = TextAnchor.UpperLeft };
                 desc.normal.textColor = locked ? new Color(0.75f, 0.72f, 0.82f, 0.7f) : UiSkin.Muted;
-                GUI.Label(new Rect(r.x + 42f, r.y + 60f, r.width - 64f, r.height - 70f), o.desc, desc);
+                GUI.Label(new Rect(r.x + 32f, r.y + 42f, r.width - 44f, r.height - 76f), o.desc, desc);
 
-                if (locked) UiSkin.Badge(r.xMax - 170f, r.y + 18f, "LEVEL " + o.level, UiSkin.Red);
-                else if (on) UiSkin.Badge(r.xMax - 150f, r.y + 18f, "EQUIPPED", UiSkin.Green);
-                else if (o.id == other && o.id != 0) UiSkin.Badge(r.xMax - 150f, r.y + 18f, "OTHER SLOT", UiSkin.Teal);
-
-                if (!locked && !on && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                string badge = armed ? "CLICK TO BUY" : locked ? HUD.Money(o.price) : on ? "EQUIPPED" : o.id == other && o.id != 0 ? "OTHER SLOT" : null;
+                Color badgeCol = armed ? UiSkin.Green : locked ? (afford ? UiSkin.Gold : UiSkin.Red) : on ? UiSkin.Green : UiSkin.Teal;
+                if (badge != null)
                 {
-                    Equip(editing, loadoutSlot, o.id);
-                    Sfx.Ui("ui_equip");
-                    Profile.SetLoadout(editing);
-                    editing = Profile.Loadout.Copy();
+                    float bw = badge.Length * 12.5f + 24f;
+                    UiSkin.Badge(r.xMax - bw - 12f, r.yMax - 38f, badge, badgeCol, null, 28f);
                 }
+
+                if (on || !GUI.Button(r, GUIContent.none, GUIStyle.none)) continue;
+                if (locked)
+                {
+                    if (!afford) { Sfx.Ui("empty_click"); continue; }
+                    if (!armed) { buyArmedKey = key; buyArmedUntil = Now + 3f; Sfx.Ui("ui_click"); continue; }
+                    if (!Profile.Buy(o.category, o.id, o.price)) { Sfx.Ui("empty_click"); continue; }
+                    buyArmedKey = -1;
+                    Sfx.Ui("cash");
+                }
+                Equip(editing, loadoutSlot, o.id);
+                Sfx.Ui("ui_equip");
+                SaveEditing();
             }
 
-            if (UiSkin.Button(new Rect(panel.xMax - 340f, panel.yMax - 112f, 300f, 80f), "DONE", UiSkin.Yellow, null, 36))
+            if (UiSkin.Button(new Rect(panel.xMax - 340f, panel.yMax - 100f, 300f, 74f), "DONE", UiSkin.Yellow, null, 36))
             {
-                Profile.SetLoadout(editing);
+                SaveEditing();
+                GUI.FocusControl(null);
                 showLoadout = false;
             }
         }
@@ -791,8 +851,8 @@ namespace KnockbackRumble
         {
             if (cardTitle == null)
             {
-                cardTitle = new GUIStyle { font = UiSkin.Display, fontSize = 23, wordWrap = true, alignment = TextAnchor.UpperCenter };
-                cardBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 16, wordWrap = true, alignment = TextAnchor.UpperCenter };
+                cardTitle = new GUIStyle { font = UiSkin.Display, fontSize = 20, wordWrap = true, alignment = TextAnchor.UpperCenter };
+                cardBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 14, wordWrap = true, alignment = TextAnchor.UpperCenter };
             }
             UiSkin.Fill(new Rect(0f, 0f, W, H), new Color(0.03f, 0.02f, 0.06f, 0.75f));
             float cx = W / 2f, pw = 1540f, ph = 940f;
@@ -808,8 +868,9 @@ namespace KnockbackRumble
             // ---- The games ----
             var all = Events.All;
             int cols = 6;
-            float gx = panel.x + 40f, gy = panel.y + 140f, gap = 14f;
-            float cw = (1130f - (cols - 1) * gap) / cols, ch = 214f;
+            int rows = (all.Length + cols - 1) / cols;
+            float gx = panel.x + 40f, gy = panel.y + 130f, gap = 10f;
+            float cw = (1130f - (cols - 1) * gap) / cols, ch = Mathf.Min(214f, (ph - 130f - 30f - (rows - 1) * gap) / rows);
             for (int i = 0; i < all.Length; i++)
             {
                 var k = all[i];
@@ -821,17 +882,17 @@ namespace KnockbackRumble
                 float a = random ? 0.75f : 1f;
                 cardTitle.normal.textColor = new Color(UiSkin.Cream.r, UiSkin.Cream.g, UiSkin.Cream.b, a);
                 cardBlurb.normal.textColor = new Color(UiSkin.Muted.r, UiSkin.Muted.g, UiSkin.Muted.b, a);
-                GUI.Label(new Rect(r.x + 10f, r.y + 46f, r.width - 20f, 62f), Events.Title(k), cardTitle);
-                GUI.Label(new Rect(r.x + 12f, r.y + 112f, r.width - 24f, r.height - 118f), Events.Blurb(k), cardBlurb);
+                GUI.Label(new Rect(r.x + 8f, r.y + 34f, r.width - 16f, 48f), Events.Title(k), cardTitle);
+                GUI.Label(new Rect(r.x + 10f, r.y + 82f, r.width - 20f, r.height - 86f), Events.Blurb(k), cardBlurb);
                 if (on)
                 {
-                    UiSkin.Image(new Rect(r.x + r.width / 2f - 19f, r.y + 8f, 38f, 38f), UiSkin.Dot, UiSkin.Gold);
-                    UiSkin.Text(new Rect(r.x + r.width / 2f - 19f, r.y + 8f, 38f, 38f), (pick + 1).ToString(), UiSkin.Display, 22, UiSkin.Ink,
+                    UiSkin.Image(new Rect(r.x + r.width / 2f - 15f, r.y + 5f, 30f, 30f), UiSkin.Dot, UiSkin.Gold);
+                    UiSkin.Text(new Rect(r.x + r.width / 2f - 15f, r.y + 5f, 30f, 30f), (pick + 1).ToString(), UiSkin.Display, 18, UiSkin.Ink,
                         TextAnchor.MiddleCenter, false);
                 }
                 else if (!random)
                 {
-                    UiSkin.Text(new Rect(r.x, r.y + 8f, r.width, 34f), "+ ADD", UiSkin.Display, 20, new Color(1f, 1f, 1f, 0.35f), TextAnchor.MiddleCenter, false);
+                    UiSkin.Text(new Rect(r.x, r.y + 5f, r.width, 28f), "+ ADD", UiSkin.Display, 18, new Color(1f, 1f, 1f, 0.35f), TextAnchor.MiddleCenter, false);
                 }
                 if (!random && GUI.Button(r, GUIContent.none, GUIStyle.none))
                 {
@@ -905,6 +966,7 @@ namespace KnockbackRumble
         void OpenCharacter()
         {
             showCharacter = true;
+            charView = Profile.Character;
             showLoadout = false;
             showVolumes = false;
             GUI.FocusControl(null);
@@ -921,6 +983,8 @@ namespace KnockbackRumble
             return MatchController.HumanColors[0];
         }
 
+        int charView = -1;
+
         void DrawCharacter(float W, float H, float oy)
         {
             if (charBlurb == null) charBlurb = new GUIStyle { font = UiSkin.BodyBold, fontSize = 16, wordWrap = true, alignment = TextAnchor.UpperLeft };
@@ -934,6 +998,7 @@ namespace KnockbackRumble
                 UiSkin.BodyBold, 20, UiSkin.Muted, TextAnchor.MiddleLeft, false);
 
             int current = Profile.Character;
+            if (Characters.Get(charView) == null) charView = current;
             var all = Characters.All;
             float gx = panel.x + 40f, gy = panel.y + 130f, cw = 252f, ch = 136f, gap = 14f;
             for (int i = 0; i < all.Length; i++)
@@ -941,30 +1006,55 @@ namespace KnockbackRumble
                 var c = all[i];
                 var r = new Rect(gx + (i % 3) * (cw + gap), gy + (i / 3) * (ch + gap), cw, ch);
                 bool on = c.id == current;
+                bool owned = Profile.OwnsCharacter(c);
+                bool viewing = c.id == charView && !on;
                 UiSkin.Card(r);
                 if (on) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(1f, 0.79f, 0.16f, 0.25f));
-                UiSkin.Text(new Rect(r.x + 18f, r.y + 10f, r.width - 36f, 40f), c.name.ToUpperInvariant(), UiSkin.Display, 24, on ? UiSkin.Gold : UiSkin.Cream,
-                    TextAnchor.MiddleLeft, true);
-                charBlurb.normal.textColor = UiSkin.Muted;
-                GUI.Label(new Rect(r.x + 18f, r.y + 52f, r.width - 36f, r.height - 58f), c.blurb, charBlurb);
+                else if (viewing) UiSkin.Pill(new Rect(r.x + 6f, r.y + 6f, r.width - 12f, r.height - 12f), new Color(0.5f, 0.85f, 1f, 0.18f));
+                UiSkin.Text(new Rect(r.x + 18f, r.y + 10f, r.width - 36f, 40f), c.name.ToUpperInvariant(), UiSkin.Display, 24,
+                    on ? UiSkin.Gold : owned ? UiSkin.Cream : UiSkin.Muted, TextAnchor.MiddleLeft, true);
+                charBlurb.normal.textColor = owned ? UiSkin.Muted : new Color(0.75f, 0.72f, 0.82f, 0.7f);
+                GUI.Label(new Rect(r.x + 18f, r.y + 52f, r.width - 36f, r.height - 90f), c.blurb, charBlurb);
+                string badge = on ? "PLAYING" : owned ? null : HUD.Money(c.price);
+                if (badge != null)
+                    UiSkin.Badge(r.xMax - (badge.Length * 12.5f + 24f) - 12f, r.yMax - 38f, badge,
+                        on ? UiSkin.Green : Profile.Wallet >= c.price ? UiSkin.Gold : UiSkin.Red, null, 28f);
                 if (!on && GUI.Button(r, GUIContent.none, GUIStyle.none))
                 {
-                    Profile.Character = c.id;
-                    Sfx.Ui("ui_equip");
+                    charView = c.id;
+                    if (owned)
+                    {
+                        Profile.Character = c.id;
+                        Sfx.Ui("ui_equip");
+                    }
+                    else Sfx.Ui("ui_click");
                 }
             }
 
-            // Live preview
+            // Live preview (of the one you clicked, so you can look before you buy)
             var pr = new Rect(panel.x + 860f, panel.y + 120f, 480f, 640f);
             UiSkin.Card(pr);
             var preview = CustomizePreview.Get();
-            preview.ShowCharacter(current, MyColor());
+            preview.ShowCharacter(charView, MyColor());
             if (preview.Texture != null && Event.current.type == EventType.Repaint)
                 GUI.DrawTexture(new Rect(pr.x + 10f, pr.y + 10f, pr.width - 20f, pr.height - 20f), preview.Texture, ScaleMode.ScaleAndCrop, false);
             var ev = Event.current;
             if (ev.type == EventType.MouseDrag && pr.Contains(ev.mousePosition)) { preview.Spin(ev.delta.x * 1.5f); ev.Use(); }
-            var picked = Characters.Get(current);
+            var picked = Characters.Get(charView);
             UiSkin.Heading(new Rect(pr.x, pr.yMax - 70f, pr.width, 50f), picked != null ? picked.name.ToUpperInvariant() : "", 40, UiSkin.Gold, TextAnchor.MiddleCenter);
+            if (picked != null && !Profile.OwnsCharacter(picked))
+            {
+                bool afford = Profile.Wallet >= picked.price;
+                if (UiSkin.Button(new Rect(pr.x + 40f, pr.yMax + 14f, pr.width - 80f, 70f), "BUY FOR " + HUD.Money(picked.price), afford ? UiSkin.Green : UiSkin.Dark,
+                        afford ? null : "Wallet: " + HUD.Money(Profile.Wallet), 30, afford))
+                {
+                    if (Profile.Buy(ShopCategory.Character, picked.id, picked.price))
+                    {
+                        Profile.Character = picked.id;
+                        Sfx.Ui("cash");
+                    }
+                }
+            }
 
             UiSkin.Text(new Rect(panel.x + 40f, panel.yMax - 84f, 760f, 30f),
                 MatchController.Instance != null && MatchController.Instance.InMatch ? "You switch at the start of the next game." : "Everyone sees your character online.",

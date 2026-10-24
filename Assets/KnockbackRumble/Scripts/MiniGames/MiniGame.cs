@@ -49,6 +49,8 @@ namespace KnockbackRumble
         /// <summary>Loadout guns and gadgets. If false, everyone only has the shove.</summary>
         public virtual bool WeaponsAllowed => true;
         public virtual bool StreaksAllowed => WeaponsAllowed;
+        /// <summary>Guns never run out of ammo in this game.</summary>
+        public virtual bool InfiniteAmmo => false;
         /// <summary>Charge the usual fall penalty.</summary>
         public virtual bool FallPenalty => true;
         /// <summary>Cash per second for everyone still in (games with eliminations).</summary>
@@ -212,6 +214,9 @@ namespace KnockbackRumble
             new HotPotatoGame(), new ThroneRoomGame(), new MakeItRainGame(), new GreasedSumoGame(), new SpinCycleGame(),
             new FloorIsLavaGame(), new TurfWarGame(), new RocketRodeoGame(), new ToiletRollGame(), new HoleInTheWallGame(),
             new PottyPanicGame(), new BirdBrainedGame(), new RedLightGame(), new BalloonPopGame(), new TreadmillGame(),
+            new BottomlessClipGame(), new ShotgunWeddingGame(), new GoneWithTheWindGame(), new DuckSeasonGame(), new MoonBaseGame(),
+            new PinballGame(), new ColorCrazyGame(), new WheelOfMisfortuneGame(), new SkyHighGame(), new MinefieldGame(),
+            new BouncyCastleGame(), new SwirlyGame(),
         };
 
         public static readonly NetWriter Writer = new NetWriter();
@@ -271,6 +276,7 @@ namespace KnockbackRumble
             if (game == null || course == null) return;
             game.Origin = course.transform.position;
             Current = game;
+            WeaponHolder.InfiniteAmmo = game.InfiniteAmmo;
             game.StartGame(course, seed, start);
         }
 
@@ -280,6 +286,7 @@ namespace KnockbackRumble
             Current = null;
             if (g != null) g.End();
             SfxRunner.MuteGameMusic = false;
+            WeaponHolder.InfiniteAmmo = false;
         }
 
         /// <summary>Host: knock someone out of the current game (bombs, musical chairs...). Tells everyone.</summary>

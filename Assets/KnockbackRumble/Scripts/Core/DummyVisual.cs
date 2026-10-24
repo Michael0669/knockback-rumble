@@ -360,9 +360,11 @@ namespace KnockbackRumble
             {
                 if (hand == null) return transform.position + Vector3.up * 1.35f + transform.forward * 0.6f;
                 if (gun != null && gunMuzzle.HasValue) return hand.TransformPoint(gunMuzzle.Value);
-                float len = shownWeapon == WeaponDef.LongShot ? 1.15f : shownWeapon == WeaponDef.RocketLauncher ? 0.8f
-                          : shownWeapon == WeaponDef.BoomStick ? 0.74f : 0.45f;
-                float up = shownWeapon == WeaponDef.RocketLauncher ? 0.12f : 0.05f;
+                bool tube = shownWeapon == WeaponDef.RocketLauncher || shownWeapon == WeaponDef.BigFlush;
+                float len = shownWeapon == WeaponDef.LongShot ? 1.15f : tube ? 0.8f
+                          : shownWeapon == WeaponDef.BoomStick ? 0.74f : shownWeapon == WeaponDef.LeafBlower ? 0.7f
+                          : shownWeapon == WeaponDef.BonkRifle || shownWeapon == WeaponDef.SprayNPray ? 0.58f : 0.45f;
+                float up = tube ? 0.12f : 0.05f;
                 return hand.TransformPoint(new Vector3(0f, up, len));
             }
         }
