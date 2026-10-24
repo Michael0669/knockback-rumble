@@ -676,10 +676,9 @@ namespace KnockbackRumble
             string line = LoadingLines[Mathf.Abs(Mathf.FloorToInt(race.RaceStartTime * 7f) + Mathf.FloorToInt(progress * 4f)) % LoadingLines.Length];
             Label(new Rect(bar.x, bar.y - 44f, bar.width - 120f, 38f), line, left, UiSkin.Muted, UiSkin.Display, 24);
             Label(new Rect(bar.xMax - 120f, bar.y - 44f, 120f, 38f), Mathf.FloorToInt(progress * 100f) + "%", right, UiSkin.Gold, UiSkin.Display, 26);
-            UiSkin.Pill(bar, UiSkin.PillDark);
-            float fillW = Mathf.Max(30f, bar.width * progress);
-            UiSkin.Pill(new Rect(bar.x, bar.y, fillW, bar.height), UiSkin.Yellow);
-            UiSkin.StripeBand(new Rect(bar.x + 12f, bar.y + 8f, Mathf.Max(0f, fillW - 24f), bar.height - 16f), Time.time * 0.8f);
+            UiSkin.Bar(bar, progress, UiSkin.Yellow);
+            float fillW = (bar.width - 6f) * progress;
+            UiSkin.StripeBand(new Rect(bar.x + 3f, bar.y + 8f, Mathf.Max(0f, fillW), bar.height - 16f), Time.time * 0.8f);
         }
 
         // ---------- Helpers ----------

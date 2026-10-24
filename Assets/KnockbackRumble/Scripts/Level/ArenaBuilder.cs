@@ -350,6 +350,7 @@ namespace KnockbackRumble
 
         static void Sign(Transform g, string text, Vector3 localPos, float size, Color color)
         {
+            if (!Props.ShowSigns) return;
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (font == null) return;
             var go = new GameObject("Sign_" + text);

@@ -61,20 +61,10 @@ namespace KnockbackRumble
 
         static void Dollar(Transform parent, Vector3 pos, float yaw, Material mat)
         {
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (font == null) return;
-            var go = new GameObject("Dollar");
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = pos;
-            go.transform.localEulerAngles = new Vector3(0f, yaw + 180f, 0f);
-            var tm = go.AddComponent<TextMesh>();
-            tm.font = font;
-            tm.text = "$";
-            tm.fontSize = 64;
-            tm.characterSize = 0.09f;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.color = Palette.Gold;
-            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            // A gold coin badge on the side of the bag (no 3D text: it showed through walls).
+            var coin = LowPoly.Make(LowPoly.Cylinder(12), "Dollar", parent, pos, new Vector3(0.22f, 0.03f, 0.22f), Mats.Get("Gold", Palette.Gold),
+                new Vector3(90f, yaw, 0f));
+            LowPoly.Make(LowPoly.Torus(12, 3, 0.2f), "DollarRim", coin.transform, new Vector3(0f, 0.6f, 0f), new Vector3(0.8f, 0.5f, 0.8f), mat);
         }
 
         public void SetCarrier(Contestant c)

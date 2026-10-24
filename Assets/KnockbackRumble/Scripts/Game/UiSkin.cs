@@ -129,6 +129,16 @@ namespace KnockbackRumble
         public static void CardEmpty(Rect r) => Draw(cardEmpty, r, Color.white);
         public static void Pill(Rect r, Color tint) => Draw(pill, r, tint);
 
+        /// <summary>A square progress bar: dark track with a thin outline, flat fill (no rounded ends).</summary>
+        public static void Bar(Rect r, float fill, Color color)
+        {
+            Fill(r, new Color(0.05f, 0.04f, 0.08f, 0.95f));
+            var inner = new Rect(r.x + 3f, r.y + 3f, r.width - 6f, r.height - 6f);
+            Fill(inner, PillDark);
+            fill = Mathf.Clamp01(fill);
+            if (fill > 0f) Fill(new Rect(inner.x, inner.y, inner.width * fill, inner.height), color);
+        }
+
         public static void Fill(Rect r, Color color)
         {
             if (!Repaint) return;

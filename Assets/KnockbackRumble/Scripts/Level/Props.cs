@@ -284,8 +284,12 @@ namespace KnockbackRumble
 
         // ---------------------------------------------------------------- helpers
 
+        /// <summary>3D text in the world is switched off: it drew through walls and floated in the sky.</summary>
+        public static bool ShowSigns = false;
+
         public static GameObject Sign(Transform g, string text, Vector3 localPos, float size, Color color)
         {
+            if (!ShowSigns) return null;
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (font == null) return null;
             var go = new GameObject("Sign_" + text);
